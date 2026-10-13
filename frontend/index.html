@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Salesforce Agentic Analytics Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <!-- Ambient background glow elements -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- Executive Top Bar -->
+  <header class="topbar">
+    <div class="brand-section">
+      <div class="brand-logo">
+        <svg class="sf-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/>
+        </svg>
+        <div class="logo-sparkle">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="m12 3 2.1 6.3 6.3 2.1-6.3 2.1L12 19.8l-2.1-6.3-6.3-2.1 6.3-2.1L12 3z"/>
+          </svg>
+        </div>
+      </div>
+      <div>
+        <div class="eyebrow-badge">
+          <span class="pulse-dot"></span>
+          SALESFORCE AGENTIC ANALYTICS SUITE
+        </div>
+        <h1>Analytics Assistant <span class="gradient-text">Studio</span></h1>
+        <p class="subheading">Natural Language Querying · Safe Read-Only SOQL · Deterministic Audited Proof</p>
+      </div>
+    </div>
+    
+    <div class="header-badges">
+      <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle light and dark mode" title="Switch Theme">
+        <svg class="theme-icon-sun" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+        </svg>
+        <svg class="theme-icon-moon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+        </svg>
+        <span class="theme-label" id="theme-text">Dark</span>
+      </button>
+
+      <div class="telemetry-pill">
+        <span class="beacon beacon-live"></span>
+        <span class="telemetry-label">Engine</span>
+        <strong class="telemetry-val">SOQL Guard Active</strong>
+      </div>
+      <div class="telemetry-pill environment">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="20" height="14" x="2" y="5" rx="2"/>
+          <line x1="2" x2="22" y1="10" y2="10"/>
+        </svg>
+        <span>Mock / SF API</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Application Grid -->
+  <main class="layout">
+    <!-- 1. Query Input Panel -->
+    <section class="panel query-panel">
+      <div class="panel-header-row">
+        <div class="panel-tag">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          QUERY WORKSPACE
+        </div>
+        <span class="shortcut-tip"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to execute</span>
+      </div>
+
+      <label for="question" class="input-label">What business questions would you like to analyze?</label>
+      <div class="input-container">
+        <textarea id="question" rows="3" placeholder="e.g. Show total sales by region or pipeline by stage...">Show total sales by region.</textarea>
+        <div class="input-sparkle-indicator">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+            <path d="m12 2 2.4 7.2 7.2 2.4-7.2 2.4L12 21.2l-2.4-7.2-7.2-2.4 7.2-2.4L12 2z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="query-actions">
+        <button id="run-query" class="primary">
+          <span class="btn-spinner" id="btn-spinner" hidden></span>
+          <svg class="btn-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2">
+            <polygon points="5 3 19 12 5 21 5 3"/>
+          </svg>
+          <span class="btn-text">Run Analysis</span>
+        </button>
+        <div class="status-indicator-wrap">
+          <span id="status-beacon" class="status-beacon status-idle"></span>
+          <span id="request-status" role="status" aria-live="polite">System ready</span>
+        </div>
+      </div>
+
+      <div class="sample-section">
+        <div class="sample-heading">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
+          <span>Recommended Analytical Prompts</span>
+        </div>
+        <div class="chips" id="sample-queries">
+          <button class="chip">
+            <span class="chip-dot"></span>
+            Show total sales by region.
+          </button>
+          <button class="chip">
+            <span class="chip-dot"></span>
+            Who are the top 10 sales representatives?
+          </button>
+          <button class="chip">
+            <span class="chip-dot"></span>
+            Show monthly revenue for 2026.
+          </button>
+          <button class="chip">
+            <span class="chip-dot"></span>
+            Show opportunity pipeline by stage.
+          </button>
+          <button class="chip">
+            <span class="chip-dot"></span>
+            Show opportunities above $100K.
+          </button>
+          <button class="chip">
+            <span class="chip-dot"></span>
+            Show lead conversion rate by source.
+          </button>
+        </div>
+      </div>
+      
+      <p class="hint">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" x2="12" y1="16" y2="12"/>
+          <line x1="12" x2="12.01" y1="8" y2="8"/>
+        </svg>
+        <span>Queries pass through strict SOQL validation, field permissions, and deterministic dual calculation verification.</span>
+      </p>
+    </section>
+
+    <!-- 2. Audit & Verification Panel -->
+    <section class="panel verification-panel">
+      <div class="panel-heading">
+        <div class="panel-title-group">
+          <div class="panel-tag">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            AUDIT TRAIL &amp; LINEAGE
+          </div>
+          <h2>Verification Telemetry</h2>
+        </div>
+        <span id="verification-badge" class="badge neutral">Not run</span>
+      </div>
+
+      <div class="verification-grid">
+        <div class="metric-card">
+          <div class="card-top">
+            <span class="metric-label">Request ID</span>
+            <button class="copy-btn" id="copy-req-id" title="Copy Request ID">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+            </button>
+          </div>
+          <strong id="request-id" class="mono-val">—</strong>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Verification Integrity</span>
+          <strong id="verified-value" class="state-val">Not available</strong>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Checked Timestamp</span>
+          <strong id="checked-at" class="mono-val">—</strong>
+        </div>
+
+        <div class="metric-card">
+          <span class="metric-label">Workflow Engine State</span>
+          <strong id="workflow-state" class="state-badge-wrap">—</strong>
+        </div>
+      </div>
+
+      <details class="lineage-details">
+        <summary>
+          <div class="summary-content">
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" x2="20" y1="19" y2="19"/>
+            </svg>
+            <span>Inspect Query Lineage &amp; Execution Proof</span>
+          </div>
+          <span class="chevron">▾</span>
+        </summary>
+        <div class="lineage-container">
+          <pre id="lineage">No lineage returned yet.</pre>
+        </div>
+      </details>
+    </section>
+
+    <!-- 3. Results & Visualization Panel -->
+    <section class="panel results-panel">
+      <div class="panel-heading">
+        <div class="panel-title-group">
+          <div class="panel-tag">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" x2="18" y1="20" y2="10"/>
+              <line x1="12" x2="12" y1="20" y2="4"/>
+              <line x1="6" x2="6" y1="20" y2="14"/>
+            </svg>
+            ANALYTICS OUTPUT
+          </div>
+          <h2 id="result-title">Interactive Analysis Results</h2>
+        </div>
+        <div class="results-actions">
+          <button id="export-csv" class="secondary" disabled>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" x2="12" y1="15" y2="3"/>
+            </svg>
+            <span>Export CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick KPI summary cards injected dynamically -->
+      <div id="kpi-banner" class="kpi-banner" hidden>
+        <div class="kpi-item">
+          <span class="kpi-label">Records Returned</span>
+          <span class="kpi-val" id="kpi-count">0</span>
+        </div>
+        <div class="kpi-item">
+          <span class="kpi-label">Primary Metric Total</span>
+          <span class="kpi-val" id="kpi-sum">—</span>
+        </div>
+        <div class="kpi-item">
+          <span class="kpi-label">Data Confidence</span>
+          <span class="kpi-val highlight" id="kpi-confidence">100% Deterministic</span>
+        </div>
+      </div>
+
+      <!-- Error Notice -->
+      <div id="error-box" class="error-box" hidden>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" x2="12" y1="8" y2="12"/>
+          <line x1="12" x2="12.01" y1="16" y2="16"/>
+        </svg>
+        <div class="error-content" id="error-message"></div>
+      </div>
+
+      <!-- Chart Display Area -->
+      <div class="chart-wrapper">
+        <div id="chart" aria-label="Analytics chart">
+          <div class="empty-state">
+            <div class="empty-icon-wrap">
+              <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+                <rect width="18" height="18" x="3" y="3" rx="2"/>
+                <path d="M7 16V12"/>
+                <path d="M12 16V8"/>
+                <path d="M17 16V14"/>
+              </svg>
+            </div>
+            <h3>Ready for Query Execution</h3>
+            <p>Select a recommended question or type your prompt to generate interactive verified charts.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Structured Tabular Data View -->
+      <div class="table-section-heading">
+        <span>Verified Tabular Data</span>
+        <span class="table-row-count" id="table-row-badge">0 rows</span>
+      </div>
+      <div class="table-wrap">
+        <table id="data-table">
+          <thead id="table-head">
+            <tr><th>Results will appear here</th></tr>
+          </thead>
+          <tbody id="table-body">
+            <tr><td class="empty-table-cell">No analysis executed yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Executive Footer -->
+  <footer class="app-footer">
+    <div class="footer-left">
+      <span class="footer-brand">Agentic Salesforce Analytics Assistant</span>
+      <span class="footer-dot">·</span>
+      <span>Enterprise Grade v0.2</span>
+    </div>
+    <div class="footer-right">
+      <span class="security-badge">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Read-Only SOQL Enforcement
+      </span>
+      <span class="footer-dot">·</span>
+      <span>Zero Hallucination Guarantee</span>
+    </div>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,17 +1,56 @@
-from fastapi import APIRouter, HTTPException
-from app.schemas.api import AnalyticsQueryRequest, AnalyticsQueryResponse, HealthResponse
+
+from dataclasses import asdict
+from functools import lru_cache
+
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.api.schemas import (
+    AnalyticsQueryRequest,
+    AnalyticsQueryResponse,
+)
 from app.orchestration.orchestrator import AnalyticsOrchestrator
 
-router = APIRouter()
-orchestrator = AnalyticsOrchestrator()
+router = APIRouter(tags=["Analytics"])
 
-@router.get("/health", response_model=HealthResponse, tags=["health"])
-def api_health() -> HealthResponse:
-    return HealthResponse(status="ok")
 
-@router.post("/analytics/query", response_model=AnalyticsQueryResponse, tags=["analytics"])
-def run_analytics(request: AnalyticsQueryRequest) -> AnalyticsQueryResponse:
+@lru_cache(maxsize=1)
+def get_orchestrator() -> AnalyticsOrchestrator:
+    """
+    Return the configured orchestrator.
+
+    Register your actual agents and dependencies here.
+    Do not leave the agent registry empty in production.
+    """
+    return AnalyticsOrchestrator()
+
+
+@router.post(
+    "/query",
+    response_model=AnalyticsQueryResponse,
+    summary="Execute a Salesforce analytics query",
+)
+def execute_analytics_query(
+    request: AnalyticsQueryRequest,
+    orchestrator: AnalyticsOrchestrator = Depends(get_orchestrator),
+) -> AnalyticsQueryResponse:
     try:
-        return orchestrator.run(request)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        result = orchestrator.run(
+            request.question,
+            user_id=request.user_id,
+        )
+
+        # OrchestrationResponse is a dataclass in the current design.
+        if hasattr(result, "__dataclass_fields__"):
+            payload = asdict(result)
+        else:
+            payload = result
+
+        return AnalyticsQueryResponse.model_validate(payload)
+
+    except Exception as exc:
+        # Keep internal exception details out of the public API response.
+        # Replace this with your project's structured error logger.
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected analytics service error occurred.",
+        ) from exc
