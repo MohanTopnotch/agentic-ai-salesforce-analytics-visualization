@@ -1,5 +1,4 @@
-
-#app/mcp/tools.py
+# app/mcp/tools.py
 """Security-aware MCP tools for Salesforce analytics."""
 
 from time import perf_counter
@@ -33,9 +32,7 @@ class SalesforceMCPToolProvider:
         if not user_id or not user_id.strip():
             raise PermissionError("A user identity is required.")
 
-        accessible_objects = set(
-            self.client.get_accessible_objects(user_id)
-        )
+        accessible_objects = set(self.client.get_accessible_objects(user_id))
         self.safety_guard.validate_object_access(
             object_name,
             accessible_objects,
@@ -54,20 +51,19 @@ class SalesforceMCPToolProvider:
         """Validate permissions and SOQL before executing the query."""
         request_id = str(uuid4())
         started = perf_counter()
+        validated_soql = soql
 
         try:
             if not user_id or not user_id.strip():
                 raise PermissionError("A user identity is required.")
 
-            # Intersect supplied permissions with the client's object access.
+            # Intersect caller-supplied objects with server-authorized objects.
             client_objects = {
-                name.casefold()
-                for name in self.client.get_accessible_objects(user_id)
+                name.casefold() for name in self.client.get_accessible_objects(user_id)
             }
+
             permitted_objects = {
-                name
-                for name in accessible_objects
-                if name.casefold() in client_objects
+                name for name in accessible_objects if name.casefold() in client_objects
             }
 
             validated_soql = self.safety_guard.validate_query(
@@ -80,14 +76,13 @@ class SalesforceMCPToolProvider:
             result = self.client.query(validated_soql)
 
             if not isinstance(result, dict):
-                raise TypeError(
-                    "Salesforce client returned an invalid response."
-                )
+                raise TypeError("Salesforce client returned an invalid response.")
 
             self.audit_logger.log_run(
                 request_id=request_id,
                 duration_ms=(perf_counter() - started) * 1000,
                 state="success",
+                soql_query=validated_soql,
                 verification_status="pending",
                 lineage={
                     "source": "SalesforceMCP",
@@ -106,6 +101,7 @@ class SalesforceMCPToolProvider:
                 request_id=request_id,
                 duration_ms=(perf_counter() - started) * 1000,
                 state="error",
+                soql_query=soql,
                 verification_status="not_verified",
                 lineage={"source": "SalesforceMCP"},
                 error_code=type(exc).__name__,
@@ -127,20 +123,14 @@ class SalesforceMCPToolProvider:
         objects = self.client.get_accessible_objects(user_id)
         search_term = query.casefold().strip()
 
-        return [
-            obj
-            for obj in objects
-            if search_term in obj.casefold()
-        ]
+        return [obj for obj in objects if search_term in obj.casefold()]
 
     def get_data_lineage(self, request_id: str) -> dict[str, Any]:
         """Return lineage from a stored audit record, if available."""
         record = self.audit_logger.find_by_request_id(request_id)
 
         if record is None:
-            raise LookupError(
-                f"No audit or lineage record found for '{request_id}'."
-            )
+            raise LookupError(f"No audit or lineage record found for '{request_id}'.")
 
         return {
             "request_id": request_id,

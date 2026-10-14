@@ -68,12 +68,10 @@ class SOQLGenerationAgent(BaseAgent):
                     "Please specify the metric or fields to retrieve.",
                 )
 
-            object_name, description, resolved_fields = (
-                self._resolve_object_and_fields(
-                    intent,
-                    requested_fields,
-                    accessible_objects,
-                )
+            object_name, description, resolved_fields = self._resolve_object_and_fields(
+                intent,
+                requested_fields,
+                accessible_objects,
             )
 
             field_names = set(description.get("field_names", []))
@@ -185,9 +183,7 @@ class SOQLGenerationAgent(BaseAgent):
     ) -> tuple[str, dict[str, Any], list[str]]:
         """Resolve one accessible object that contains all requested fields."""
         explicit_object = (
-            intent.get("object_name")
-            or intent.get("object")
-            or intent.get("entity")
+            intent.get("object_name") or intent.get("object") or intent.get("entity")
         )
 
         if explicit_object:
@@ -240,9 +236,7 @@ class SOQLGenerationAgent(BaseAgent):
             ]
             highest = max(exact_scores)
             winners = [
-                match
-                for match, score in zip(matches, exact_scores)
-                if score == highest
+                match for match, score in zip(matches, exact_scores) if score == highest
             ]
             if len(winners) != 1:
                 raise ValueError(
@@ -311,9 +305,7 @@ class SOQLGenerationAgent(BaseAgent):
             if operator not in {"=", "!=", "<", ">", "<=", ">=", "LIKE"}:
                 raise ValueError(f"Unsupported filter operator: {operator}")
 
-            conditions.append(
-                f"{field_name} {operator} {self._format_value(value)}"
-            )
+            conditions.append(f"{field_name} {operator} {self._format_value(value)}")
 
         if conditions:
             clauses.append("WHERE " + " AND ".join(conditions))
@@ -364,9 +356,7 @@ class SOQLGenerationAgent(BaseAgent):
                 raise ValueError("Filter value contains an invalid character.")
             escaped = value.replace("\\", "\\\\").replace("'", "\\'")
             return f"'{escaped}'"
-        raise TypeError(
-            "Filter values must be strings, numbers, booleans, or null."
-        )
+        raise TypeError("Filter values must be strings, numbers, booleans, or null.")
 
     @staticmethod
     def _clarification(

@@ -1,10 +1,10 @@
-
 import copy
 import re
 from typing import Any, ClassVar
 
 from app.agents.base import (
     AgentContext,
+    AgentProvenance,
     AgentResult,
     BaseAgent,
 )
@@ -109,6 +109,43 @@ class QueryUnderstandingAgent(BaseAgent):
         "group it by",
     ]
 
+    def _result(
+        self,
+        status: str,
+        output: dict[str, Any],
+        message: str,
+        context: AgentContext | None = None,
+    ) -> AgentResult:
+        """Build a consistent structured result for query understanding."""
+        return AgentResult(
+            status=status,
+            output={
+                **output,
+                "message": message,
+            },
+            provenance=AgentProvenance(
+                agent_name=self.name,
+                input_request_id=context.request_id if context else "",
+                source_refs=("user_request", "conversation_history"),
+            ),
+            validation_status=("passed" if status == "success" else "failed"),
+        )
+
+        """Build a consistent structured result for query understanding."""
+        return AgentResult(
+            status=status,
+            output={
+                **output,
+                "message": message,
+            },
+            provenance=AgentProvenance(
+                agent_name=self.name,
+                input_request_id="",
+                source_refs=("user_request", "conversation_history"),
+            ),
+            validation_status=("passed" if status == "success" else "failed"),
+        )
+
     def run(self, context: AgentContext) -> AgentResult:
         question = self._get_question(context)
 
@@ -121,6 +158,7 @@ class QueryUnderstandingAgent(BaseAgent):
                     )
                 },
                 message="A question is required.",
+                context=context,
             )
 
         normalized = self._normalize(question)
@@ -138,6 +176,7 @@ class QueryUnderstandingAgent(BaseAgent):
                     )
                 },
                 message="No previous analysis is available for this follow-up.",
+                context=context,
             )
 
         detected_intent = self._detect_intent(normalized)
@@ -178,6 +217,7 @@ class QueryUnderstandingAgent(BaseAgent):
             status="success",
             output={"intent": intent},
             message="Query intent identified.",
+            context=context,
         )
 
     @staticmethod
@@ -225,19 +265,21 @@ class QueryUnderstandingAgent(BaseAgent):
         messages = getattr(context, "messages", None) or []
         metadata = getattr(context, "metadata", {}) or {}
 
-        has_previous_context = bool(
-            metadata.get("prior_intent") or history or messages
-        )
+        has_previous_context = bool(metadata.get("prior_intent") or history or messages)
 
         if not has_previous_context:
             return False
 
-        return any(
-            phrase in normalized
-            for phrase in self.FOLLOW_UP_PHRASES
-        )
+        return any(phrase in normalized for phrase in self.FOLLOW_UP_PHRASES)
 
     def _detect_intent(self, question: str) -> str:
+        # Preserve the existing intent rules, but identify sales-by-region
+        # queries before the general revenue-analysis keyword matching.
+        if "sales" in question and (
+            "by region" in question or "by regions" in question
+        ):
+            return "sales_by_region"
+
         for intent_name, keywords in self.INTENT_KEYWORDS.items():
             if any(keyword in question for keyword in keywords):
                 return intent_name
@@ -247,8 +289,7 @@ class QueryUnderstandingAgent(BaseAgent):
     def _detect_metrics(self, question: str) -> list[str]:
         # Check longer, more specific phrases before general ones.
         if any(
-            phrase in question
-            for phrase in self.METRIC_KEYWORDS["average_revenue"]
+            phrase in question for phrase in self.METRIC_KEYWORDS["average_revenue"]
         ):
             return ["average_revenue"]
 
@@ -393,10 +434,7 @@ class QueryUnderstandingAgent(BaseAgent):
 
         direction = (
             "ASC"
-            if any(
-                phrase in question
-                for phrase in ["ascending", "lowest", "smallest"]
-            )
+            if any(phrase in question for phrase in ["ascending", "lowest", "smallest"])
             else "DESC"
         )
 
@@ -499,8 +537,6 @@ class QueryUnderstandingAgent(BaseAgent):
         merged.setdefault("filters", [])
         merged.setdefault("sort", None)
         merged.setdefault("limit", None)
-        merged["entities"] = QueryUnderstandingAgent._extract_entities(
-            question
-        )
+        merged["entities"] = QueryUnderstandingAgent._extract_entities(question)
 
         return merged

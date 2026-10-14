@@ -60,9 +60,7 @@ class SOQLSafetyGuard:
 
         # Disallow multiple statements, comments, and statement terminators.
         if any(token in query for token in (";", "--", "/*", "*/")):
-            raise UnsafeSOQL(
-                "Comments and multiple statements are not allowed."
-            )
+            raise UnsafeSOQL("Comments and multiple statements are not allowed.")
 
         if any(ord(char) < 32 and char not in "\t\n\r" for char in query):
             raise UnsafeSOQL("Control characters are not allowed.")
@@ -79,18 +77,14 @@ class SOQLSafetyGuard:
         self.validate_object_access(object_name, accessible_objects)
 
         select_items = self._split_csv(parts["select"])
-        group_fields = (
-            self._split_csv(parts["group"]) if parts["group"] else []
-        )
+        group_fields = self._split_csv(parts["group"]) if parts["group"] else []
         output_fields: set[str] = set()
         aggregate_aliases: set[str] = set()
 
         for field_name in group_fields:
             if not self._FIELD_PATTERN.fullmatch(field_name):
                 raise UnsafeSOQL("Unsupported GROUP BY expression.")
-            self.validate_field_access(
-                object_name, field_name, accessible_fields
-            )
+            self.validate_field_access(object_name, field_name, accessible_fields)
             output_fields.add(field_name.casefold())
 
         for expression in select_items:
@@ -101,13 +95,13 @@ class SOQLSafetyGuard:
                 function = function.upper()
                 field_name = field_name or ""
 
-                if distinct and (function != "COUNT" or not field_name or field_name == "*"):
+                if distinct and (
+                    function != "COUNT" or not field_name or field_name == "*"
+                ):
                     raise UnsafeSOQL("DISTINCT is supported only for COUNT(field).")
 
                 if field_name == "*" and function != "COUNT":
-                    raise UnsafeSOQL(
-                        f"{function}(*) is not supported by this guard."
-                    )
+                    raise UnsafeSOQL(f"{function}(*) is not supported by this guard.")
 
                 if field_name:
                     if field_name == "*":
@@ -131,22 +125,18 @@ class SOQLSafetyGuard:
             if not self._FIELD_PATTERN.fullmatch(expression):
                 raise UnsafeSOQL("Unsupported SELECT expression.")
 
-            self.validate_field_access(
-                object_name, expression, accessible_fields
-            )
+            self.validate_field_access(object_name, expression, accessible_fields)
             output_fields.add(expression.casefold())
 
         # GROUP BY queries must select each grouped field.
-        if group_fields and not {
-            field.casefold() for field in group_fields
-        }.issubset(output_fields):
+        if group_fields and not {field.casefold() for field in group_fields}.issubset(
+            output_fields
+        ):
             raise UnsafeSOQL("GROUP BY fields must appear in SELECT.")
 
         if parts["where"]:
             for condition in self._split_conditions(parts["where"]):
-                condition_match = self._CONDITION_PATTERN.fullmatch(
-                    condition.strip()
-                )
+                condition_match = self._CONDITION_PATTERN.fullmatch(condition.strip())
                 if condition_match is None:
                     raise UnsafeSOQL("Unsupported WHERE condition.")
 
@@ -154,9 +144,7 @@ class SOQLSafetyGuard:
                 if not value.strip():
                     raise UnsafeSOQL("WHERE condition requires a value.")
 
-                self.validate_field_access(
-                    object_name, field_name, accessible_fields
-                )
+                self.validate_field_access(object_name, field_name, accessible_fields)
                 self._validate_condition_value(operator, value)
 
         if parts["order"]:
@@ -215,8 +203,7 @@ class SOQLSafetyGuard:
             field.casefold() for field in allowed_fields
         }:
             raise PermissionError(
-                f"Access to field '{field_name}' on "
-                f"'{object_name}' is denied."
+                f"Access to field '{field_name}' on '{object_name}' is denied."
             )
 
     @staticmethod
@@ -273,9 +260,7 @@ class SOQLSafetyGuard:
                 else:
                     quote = None
             elif quote is None:
-                separator = re.match(
-                    r"\s+(AND|OR)\s+", value[index:], re.IGNORECASE
-                )
+                separator = re.match(r"\s+(AND|OR)\s+", value[index:], re.IGNORECASE)
                 if separator:
                     parts.append(value[start:index].strip())
                     index += separator.end()
@@ -292,7 +277,6 @@ class SOQLSafetyGuard:
             raise UnsafeSOQL("Invalid WHERE condition.")
         return parts
 
-    
     @staticmethod
     def _validate_condition_value(operator: str, value: str) -> None:
         """Reject nested queries and malformed condition values."""
@@ -301,9 +285,7 @@ class SOQLSafetyGuard:
 
         if normalized_operator in {"IN", "NOT IN"}:
             if not (value.startswith("(") and value.endswith(")")):
-                raise UnsafeSOQL(
-                    "IN and NOT IN require a parenthesized literal list."
-                )
+                raise UnsafeSOQL("IN and NOT IN require a parenthesized literal list.")
 
             inner = value[1:-1].strip()
 
@@ -322,9 +304,7 @@ class SOQLSafetyGuard:
             return
 
         if value.startswith("(") or value.endswith(")"):
-            raise UnsafeSOQL(
-                "Parenthesized values require IN or NOT IN."
-            )
+            raise UnsafeSOQL("Parenthesized values require IN or NOT IN.")
 
         if re.search(r"\bSELECT\b", value, re.IGNORECASE):
             raise UnsafeSOQL("Nested queries are not supported.")

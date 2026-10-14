@@ -1,4 +1,3 @@
-
 """Common interface for mock and live Salesforce clients."""
 
 from abc import ABC, abstractmethod
@@ -19,8 +18,6 @@ class SalesforceClient(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_accessible_objects(
-        self, user_id: str | None = None
-    ) -> list[str]:
+    def get_accessible_objects(self, user_id: str | None = None) -> list[str]:
         """Return Salesforce objects available to the caller."""
         raise NotImplementedError

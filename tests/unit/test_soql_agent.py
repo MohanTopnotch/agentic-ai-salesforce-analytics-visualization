@@ -1,4 +1,3 @@
-
 from app.agents.base import AgentContext
 from app.agents.soql_agent import SOQLGenerationAgent
 from app.mock_salesforce_client import MockSalesforceClient

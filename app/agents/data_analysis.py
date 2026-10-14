@@ -59,17 +59,11 @@ class DataAnalysisAgent(BaseAgent):
             # Validate every metric before aggregating anything.
             for row in records:
                 if metric not in row:
-                    raise ValueError(
-                        f"Required metric field '{metric}' is missing."
-                    )
+                    raise ValueError(f"Required metric field '{metric}' is missing.")
 
                 value = self._to_decimal(row[metric])
                 group_value = row.get(dimension)
-                group_name = (
-                    str(group_value)
-                    if group_value is not None
-                    else "Unknown"
-                )
+                group_name = str(group_value) if group_value is not None else "Unknown"
 
                 validated_values.append(value)
                 values_by_group[group_name].append(value)
@@ -87,10 +81,7 @@ class DataAnalysisAgent(BaseAgent):
 
             # Independently reconcile group totals against the raw total.
             reconciliation = verify_reconciliation(
-                [
-                    self._to_decimal(row[metric])
-                    for row in calculated_data
-                ],
+                [self._to_decimal(row[metric]) for row in calculated_data],
                 grand_total,
             )
 

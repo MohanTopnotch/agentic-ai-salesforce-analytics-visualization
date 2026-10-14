@@ -40,9 +40,8 @@ def test_repair_attempt_limit_is_enforced():
     with pytest.raises(ValueError):
         AnalyticsOrchestrator(max_repair_attempts=4)
 
-    assert AnalyticsOrchestrator(
-        max_repair_attempts=3
-    ).max_repair_attempts == 3
+    assert AnalyticsOrchestrator(max_repair_attempts=3).max_repair_attempts == 3
+
 
 def test_missing_agent_returns_structured_error():
     orchestrator = AnalyticsOrchestrator(agents={})

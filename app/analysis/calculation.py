@@ -38,8 +38,7 @@ def calculate_lead_conversion_rate(
     converted = sum(
         1
         for lead in leads
-        if lead.get("IsConverted") is True
-        or lead.get("Status") == "Closed - Converted"
+        if lead.get("IsConverted") is True or lead.get("Status") == "Closed - Converted"
     )
 
     return round(converted / len(leads) * 100, 2)

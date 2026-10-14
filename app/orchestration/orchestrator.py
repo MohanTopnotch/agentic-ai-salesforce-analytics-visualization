@@ -57,9 +57,7 @@ class RequestContext:
 
     # Task 6: session and conversation context.
     session_id: str | None = None
-    conversation_history: list[dict[str, Any]] = field(
-        default_factory=list
-    )
+    conversation_history: list[dict[str, Any]] = field(default_factory=list)
 
     # Shared state used by downstream agents.
     intent: dict[str, Any] = field(default_factory=dict)
@@ -114,9 +112,7 @@ class AnalyticsOrchestrator:
             raise ValueError("max_repair_attempts must be between 0 and 3")
 
         self.max_repair_attempts = max_repair_attempts
-        self.agents = (
-            self._build_default_agents() if agents is None else agents
-        )
+        self.agents = self._build_default_agents() if agents is None else agents
         self.audit_logger = audit_logger
 
         # In-memory session store for local development. Use a persistent,
@@ -146,18 +142,14 @@ class AnalyticsOrchestrator:
                 "break it down",
                 "drill down",
             )
-            has_history = bool(
-                prior_intent or context.conversation_history
-            )
+            has_history = bool(prior_intent or context.conversation_history)
             is_follow_up = has_history and any(
                 phrase in normalized for phrase in follow_up_phrases
             )
 
             limit_match = search(r"\btop\s+(\d+)\b", normalized)
             limit = (
-                max(1, min(int(limit_match.group(1)), 1000))
-                if limit_match
-                else None
+                max(1, min(int(limit_match.group(1)), 1000)) if limit_match else None
             )
 
             if is_follow_up and isinstance(prior_intent, dict):
@@ -208,8 +200,7 @@ class AnalyticsOrchestrator:
             metadata = {
                 "accessible_objects": accessible_objects,
                 "object_metadata": {
-                    obj: client.describe_object(obj)
-                    for obj in accessible_objects
+                    obj: client.describe_object(obj) for obj in accessible_objects
                 },
             }
             return SimpleNamespace(
@@ -329,15 +320,11 @@ class AnalyticsOrchestrator:
 
                     raw_value = row[metric]
                     if raw_value is None or isinstance(raw_value, bool):
-                        raise ValueError(
-                            f"Invalid metric value for '{metric}'."
-                        )
+                        raise ValueError(f"Invalid metric value for '{metric}'.")
 
                     value = Decimal(str(raw_value))
                     if not value.is_finite():
-                        raise ValueError(
-                            f"Non-finite metric value for '{metric}'."
-                        )
+                        raise ValueError(f"Non-finite metric value for '{metric}'.")
 
                     raw_values.append(value)
                     group = str(row.get(dimension) or "Unknown")
@@ -373,11 +360,7 @@ class AnalyticsOrchestrator:
                         "calculated_data": calculated,
                         "verification": context.verification,
                     },
-                    error=(
-                        None
-                        if passed
-                        else "Grouped totals failed reconciliation."
-                    ),
+                    error=(None if passed else "Grouped totals failed reconciliation."),
                 )
             except (
                 ValueError,
@@ -408,9 +391,7 @@ class AnalyticsOrchestrator:
 
             try:
                 if not rows or not calculated:
-                    raise ValueError(
-                        "Raw records and grouped results are required."
-                    )
+                    raise ValueError("Raw records and grouped results are required.")
 
                 raw_values: list[Decimal] = []
                 for row in rows:
@@ -430,8 +411,7 @@ class AnalyticsOrchestrator:
                 for row in calculated:
                     if "AnnualRevenue" not in row:
                         raise ValueError(
-                            "Required grouped metric field "
-                            "'AnnualRevenue' is missing."
+                            "Required grouped metric field 'AnnualRevenue' is missing."
                         )
                     value = row["AnnualRevenue"]
                     if value is None or isinstance(value, bool):
@@ -474,9 +454,7 @@ class AnalyticsOrchestrator:
                 status="success" if passed else "error",
                 output={"verification": context.verification},
                 error=(
-                    None
-                    if passed
-                    else "Analytical results did not pass verification."
+                    None if passed else "Analytical results did not pass verification."
                 ),
             )
 
@@ -487,14 +465,8 @@ class AnalyticsOrchestrator:
                 "data": [
                     {
                         "type": "bar",
-                        "x": [
-                            str(row.get("Industry", "Unknown"))
-                            for row in rows
-                        ],
-                        "y": [
-                            float(row.get("AnnualRevenue", 0) or 0)
-                            for row in rows
-                        ],
+                        "x": [str(row.get("Industry", "Unknown")) for row in rows],
+                        "y": [float(row.get("AnnualRevenue", 0) or 0) for row in rows],
                     }
                 ],
                 "layout": {
@@ -587,11 +559,7 @@ class AnalyticsOrchestrator:
 
         # Scope sessions by user so one user's history cannot be reused
         # by another user who happens to supply the same session ID.
-        session_key = (
-            f"{user_id or 'anonymous'}:{session_id}"
-            if session_id
-            else None
-        )
+        session_key = f"{user_id or 'anonymous'}:{session_id}" if session_id else None
 
         if session_key:
             saved_session = self.sessions.get(session_key, {})
@@ -620,9 +588,7 @@ class AnalyticsOrchestrator:
                     data=result.output,
                     clarification_question=(
                         result.output.get("clarification_question")
-                        or result.output.get("intent", {}).get(
-                            "clarification_question"
-                        )
+                        or result.output.get("intent", {}).get("clarification_question")
                     ),
                 )
                 return response
@@ -714,8 +680,7 @@ class AnalyticsOrchestrator:
                 verified=(
                     context.verification.get("status") == "verified"
                     and context.verification.get("checks_failed", 1) == 0
-                    and context.verification.get("reconciliation_delta")
-                    is not None
+                    and context.verification.get("reconciliation_delta") is not None
                 ),
                 data={
                     "intent": context.intent,
@@ -806,9 +771,8 @@ class AnalyticsOrchestrator:
                     "The Salesforce query provider is unavailable.",
                 )
 
-            if (
-                attempt >= self.max_repair_attempts
-                or not self._is_repairable(code, message)
+            if attempt >= self.max_repair_attempts or not self._is_repairable(
+                code, message
             ):
                 raise _WorkflowFailure(
                     WorkflowErrorCode.INVALID_QUERY,
@@ -833,17 +797,11 @@ class AnalyticsOrchestrator:
             self._require_success(repair_result)
             repaired_query = repair_result.output.get("soql_query")
 
-            if (
-                not isinstance(repaired_query, str)
-                or not repaired_query.strip()
-            ):
+            if not isinstance(repaired_query, str) or not repaired_query.strip():
                 repaired_plan = repair_result.output.get("query_plan", {})
                 repaired_query = repaired_plan.get("soql_query")
 
-            if (
-                not isinstance(repaired_query, str)
-                or not repaired_query.strip()
-            ):
+            if not isinstance(repaired_query, str) or not repaired_query.strip():
                 raise _WorkflowFailure(
                     WorkflowErrorCode.INVALID_QUERY,
                     "The repair agent did not return a query.",
@@ -975,6 +933,7 @@ class AnalyticsOrchestrator:
             message=message,
             verified=False,
         )
+
     def _write_audit(
         self,
         context: RequestContext,

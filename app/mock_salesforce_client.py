@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import re
@@ -65,9 +64,7 @@ class MockSalesforceClient:
                 "NumberOfEmployees": _field(
                     "NumberOfEmployees", "integer", aggregatable=True
                 ),
-                "AnnualRevenue": _field(
-                    "AnnualRevenue", "currency", aggregatable=True
-                ),
+                "AnnualRevenue": _field("AnnualRevenue", "currency", aggregatable=True),
                 "LeadSource": _field("LeadSource", "string"),
                 "OwnerId": _field("OwnerId", "id"),
                 "CreatedDate": _field("CreatedDate", "datetime"),
@@ -162,9 +159,7 @@ class MockSalesforceClient:
             ]
         }
 
-        self._records = deepcopy(
-            sample_records if records is None else records
-        )
+        self._records = deepcopy(sample_records if records is None else records)
 
     def describe_object(self, object_name: str) -> dict[str, Any]:
         """Return metadata for a supported object."""
@@ -182,9 +177,7 @@ class MockSalesforceClient:
             "field_names": list(obj["fields"]),
         }
 
-    def get_accessible_objects(
-        self, user_id: str | None = None
-    ) -> list[str]:
+    def get_accessible_objects(self, user_id: str | None = None) -> list[str]:
         """Return the objects available to this mock client."""
         # This mock has no user-specific permission model yet.
         return sorted(self.OBJECTS)
@@ -215,9 +208,7 @@ class MockSalesforceClient:
             i += 1
 
         if quote:
-            raise SalesforceQueryError(
-                "INVALID_QUERY", "Unterminated string literal"
-            )
+            raise SalesforceQueryError("INVALID_QUERY", "Unterminated string literal")
 
         parts.append(value[start:].strip())
         return parts
@@ -280,7 +271,7 @@ class MockSalesforceClient:
                     )
             elif (
                 depth == 0
-                and where[i:i + 3].upper() == "AND"
+                and where[i : i + 3].upper() == "AND"
                 and (i == 0 or where[i - 1].isspace())
                 and (i + 3 == len(where) or where[i + 3].isspace())
             ):
@@ -321,14 +312,9 @@ class MockSalesforceClient:
                 raise SalesforceQueryError(
                     "INVALID_FILTER", "IN requires a parenthesized list"
                 )
-            values = [
-                self._literal(item)
-                for item in self._split_csv(raw[1:-1])
-            ]
+            values = [self._literal(item) for item in self._split_csv(raw[1:-1])]
             if not values:
-                raise SalesforceQueryError(
-                    "INVALID_FILTER", "IN list cannot be empty"
-                )
+                raise SalesforceQueryError("INVALID_FILTER", "IN list cannot be empty")
             return field, operator, values
 
         return field, operator, self._literal(raw)
@@ -357,7 +343,9 @@ class MockSalesforceClient:
             return False
 
         if type(actual) not in (int, float, str) or type(expected) not in (
-            int, float, str
+            int,
+            float,
+            str,
         ):
             return False
 
@@ -397,8 +385,16 @@ class MockSalesforceClient:
             raise SalesforceQueryError(
                 "UNSUPPORTED_QUERY",
                 "Query is outside the supported SELECT grammar",
-                {"supported": ["SELECT", "FROM", "WHERE", "GROUP BY",
-                               "ORDER BY", "LIMIT"]},
+                {
+                    "supported": [
+                        "SELECT",
+                        "FROM",
+                        "WHERE",
+                        "GROUP BY",
+                        "ORDER BY",
+                        "LIMIT",
+                    ]
+                },
             )
 
         select_raw, object_name, where_raw, group_raw, order_raw, limit_raw = (
@@ -415,9 +411,7 @@ class MockSalesforceClient:
 
         fields = metadata["fields"]
         selected = self._split_csv(select_raw)
-        group_fields = (
-            self._split_csv(group_raw) if group_raw else []
-        )
+        group_fields = self._split_csv(group_raw) if group_raw else []
 
         def validate_field(name: str, *, purpose: str = "select") -> None:
             if name not in fields:
@@ -459,25 +453,21 @@ class MockSalesforceClient:
                     pass
                 else:
                     validate_field(field)
-                    if function in ("SUM", "AVG") and not fields[field][
-                        "aggregatable"
-                    ]:
+                    if function in ("SUM", "AVG") and not fields[field]["aggregatable"]:
                         raise SalesforceQueryError(
                             "UNSUPPORTED_AGGREGATION",
                             f"{function} is not supported for {field}",
                         )
 
-                aggregates.append({
-                    "function": function,
-                    "field": field,
-                    "alias": alias or (
-                        f"expr{len(aggregates)}"
-                    ),
-                })
+                aggregates.append(
+                    {
+                        "function": function,
+                        "field": field,
+                        "alias": alias or (f"expr{len(aggregates)}"),
+                    }
+                )
             else:
-                if not re.fullmatch(
-                    r"[A-Za-z_][A-Za-z0-9_]*", expression
-                ):
+                if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", expression):
                     raise SalesforceQueryError(
                         "UNSUPPORTED_EXPRESSION",
                         f"Unsupported SELECT expression: {expression}",
@@ -497,7 +487,7 @@ class MockSalesforceClient:
         ):
             raise SalesforceQueryError(
                 "INVALID_AGGREGATION",
-                    "Selected non-aggregate fields must appear in GROUP BY",
+                "Selected non-aggregate fields must appear in GROUP BY",
             )
         conditions = []
         if where_raw:
@@ -528,7 +518,8 @@ class MockSalesforceClient:
                     fn = aggregate["function"]
                     field = aggregate["field"]
                     values = [
-                        row.get(field) for row in members
+                        row.get(field)
+                        for row in members
                         if field == "*" or row.get(field) is not None
                     ]
 
@@ -549,10 +540,7 @@ class MockSalesforceClient:
 
                 result.append(output)
         else:
-            result = [
-                {field: row.get(field) for field in selected}
-                for row in rows
-            ]
+            result = [{field: row.get(field) for field in selected} for row in rows]
 
         if order_raw:
             order_match = re.fullmatch(
@@ -570,9 +558,7 @@ class MockSalesforceClient:
             direction = (direction or "ASC").upper()
 
             if order_field not in (
-                set(plain_fields)
-                | set(group_fields)
-                | {a["alias"] for a in aggregates}
+                set(plain_fields) | set(group_fields) | {a["alias"] for a in aggregates}
             ):
                 raise SalesforceQueryError(
                     "INVALID_ORDER_FIELD",
@@ -583,14 +569,12 @@ class MockSalesforceClient:
             result.sort(
                 key=lambda row: (
                     row.get(order_field) is None,
-                    row.get(order_field)
-                    if row.get(order_field) is not None
-                    else 0,
+                    row.get(order_field) if row.get(order_field) is not None else 0,
                 ),
                 reverse=(direction == "DESC"),
             )
 
         if limit_raw:
-            result = result[:int(limit_raw)]
+            result = result[: int(limit_raw)]
 
         return {"totalSize": len(result), "records": result}

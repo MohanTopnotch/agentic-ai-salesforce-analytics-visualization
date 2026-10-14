@@ -32,13 +32,11 @@ class VisualizationAgent(BaseAgent):
             return AgentResult(
                 status="error",
                 output={
-                    "diagnostic": (
-                        "Visualization requires verified analytical data."
-                    )
+                    "diagnostic": ("Visualization requires verified analytical data.")
                 },
                 provenance=self._provenance(context),
                 validation_status="failed",
-                #error_message="Analysis verification has not passed.",
+                # error_message="Analysis verification has not passed.",
                 error="Analysis verification has not passed.",
             )
 
@@ -71,9 +69,7 @@ class VisualizationAgent(BaseAgent):
                 validation_status="passed",
             )
 
-        columns = list(dict.fromkeys(
-           key for row in rows for key in row
-        ))
+        columns = list(dict.fromkeys(key for row in rows for key in row))
 
         numeric_columns = [
             column
@@ -86,8 +82,7 @@ class VisualizationAgent(BaseAgent):
         ]
 
         date_columns = [
-            column for column in columns
-            if self._is_date_column(column, rows)
+            column for column in columns if self._is_date_column(column, rows)
         ]
 
         # A date dimension plus a numeric metric indicates a time series.
@@ -100,10 +95,7 @@ class VisualizationAgent(BaseAgent):
         elif numeric_columns and len(columns) == 2:
             chart_type = "bar"
             y_field = numeric_columns[0]
-            x_field = next(
-                column for column in columns
-                if column != y_field
-            )
+            x_field = next(column for column in columns if column != y_field)
 
         # Use a table for multiple descriptive columns or raw tabular output.
         else:
@@ -138,10 +130,7 @@ class VisualizationAgent(BaseAgent):
         if column.lower() in self.DATE_FIELDS:
             return True
 
-        values = [
-            row.get(column) for row in rows
-            if row.get(column) is not None
-        ]
+        values = [row.get(column) for row in rows if row.get(column) is not None]
 
         if not values:
             return False
@@ -178,9 +167,7 @@ class VisualizationAgent(BaseAgent):
             "y": y_values,
             "name": y_field,
             "hovertemplate": (
-                f"{x_field}: %{{x}}<br>"
-                f"{y_field}: %{{y:,.2f}}"
-                "<extra></extra>"
+                f"{x_field}: %{{x}}<br>{y_field}: %{{y:,.2f}}<extra></extra>"
             ),
         }
 
@@ -188,9 +175,7 @@ class VisualizationAgent(BaseAgent):
             "chart_type": chart_type,
             "data": [trace],
             "layout": {
-                "title": {
-                    "text": f"{y_field} by {x_field}"
-                },
+                "title": {"text": f"{y_field} by {x_field}"},
                 "xaxis": {
                     "title": {"text": x_field},
                     "type": "date" if chart_type == "line" else "category",
@@ -223,8 +208,7 @@ class VisualizationAgent(BaseAgent):
                     },
                     "cells": {
                         "values": [
-                            [row.get(column) for row in rows]
-                            for column in columns
+                            [row.get(column) for row in rows] for column in columns
                         ],
                     },
                 }
@@ -248,4 +232,3 @@ class VisualizationAgent(BaseAgent):
             input_request_id=context.request_id,
             source_refs=("calculated_data", "verification"),
         )
-

@@ -1,4 +1,3 @@
-
 from app.agents.base import AgentContext
 from app.agents.visualization import VisualizationAgent
 
@@ -28,4 +27,3 @@ def test_visualization_generates_bar_chart():
         "North",
         "South",
     ]
-

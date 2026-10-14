@@ -1,4 +1,3 @@
-
 import pytest
 
 from app.mock_salesforce_client import (
@@ -32,28 +31,23 @@ def test_accessible_objects(client):
 
 
 def test_filter_by_rating(client):
-    result = client.query(
-        "SELECT Id, Rating FROM Lead "
-        "WHERE Rating IN ('Hot', 'Warm')"
-    )
+    result = client.query("SELECT Id, Rating FROM Lead WHERE Rating IN ('Hot', 'Warm')")
 
     assert result["totalSize"] == 4
-    assert all(
-        row["Rating"] in ("Hot", "Warm")
-        for row in result["records"]
-    )
+    assert all(row["Rating"] in ("Hot", "Warm") for row in result["records"])
 
 
 def test_filter_by_annual_revenue(client):
     result = client.query(
-        "SELECT Id, AnnualRevenue FROM Lead "
-        "WHERE AnnualRevenue > 5000000"
+        "SELECT Id, AnnualRevenue FROM Lead WHERE AnnualRevenue > 5000000"
     )
 
     assert result["totalSize"] == 3
-    assert {
-        row["AnnualRevenue"] for row in result["records"]
-    } == {6_000_000, 8_000_000, 12_000_000}
+    assert {row["AnnualRevenue"] for row in result["records"]} == {
+        6_000_000,
+        8_000_000,
+        12_000_000,
+    }
 
 
 def test_group_and_aggregate(client):
@@ -65,12 +59,9 @@ def test_group_and_aggregate(client):
 
     assert result["totalSize"] == 3
     assert result["records"] == [
-        {"LeadSource": "Partner", "lead_count": 1,
-         "revenue": 12_000_000},
-        {"LeadSource": "Referral", "lead_count": 1,
-         "revenue": 6_000_000},
-        {"LeadSource": "Web", "lead_count": 3,
-         "revenue": 13_000_000},
+        {"LeadSource": "Partner", "lead_count": 1, "revenue": 12_000_000},
+        {"LeadSource": "Referral", "lead_count": 1, "revenue": 6_000_000},
+        {"LeadSource": "Web", "lead_count": 3, "revenue": 13_000_000},
     ]
 
 
@@ -105,9 +96,7 @@ def test_unsupported_query_is_rejected(client):
 
 def test_subquery_is_rejected(client):
     with pytest.raises(SalesforceQueryError):
-        client.query(
-            "SELECT Id, (SELECT Id FROM Contacts) FROM Lead"
-        )
+        client.query("SELECT Id, (SELECT Id FROM Contacts) FROM Lead")
 
 
 def test_invalid_metadata_object(client):

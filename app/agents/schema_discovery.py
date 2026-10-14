@@ -25,9 +25,7 @@ class SchemaDiscoveryAgent(BaseAgent):
             object_metadata: dict[str, Any] = {}
 
             for object_name in accessible_objects:
-                object_metadata[object_name] = (
-                    self.client.describe_object(object_name)
-                )
+                object_metadata[object_name] = self.client.describe_object(object_name)
 
             metadata = getattr(context, "metadata", None)
             if metadata is None:
@@ -39,10 +37,12 @@ class SchemaDiscoveryAgent(BaseAgent):
 
             return AgentResult(
                 status="success",
-                output={"metadata": {
-                    "accessible_objects": accessible_objects,
-                    "object_metadata": object_metadata,
-                }},
+                output={
+                    "metadata": {
+                        "accessible_objects": accessible_objects,
+                        "object_metadata": object_metadata,
+                    }
+                },
                 provenance=AgentProvenance(
                     agent_name=self.name,
                     input_request_id=context.request_id,
@@ -51,13 +51,6 @@ class SchemaDiscoveryAgent(BaseAgent):
                 validation_status="passed",
             )
 
-        except Exception as exc:
-            return AgentResult(
-                status="error",
-                output={},
-                error=f"Schema discovery failed: {exc}",
-                validation_status="failed",
-            )
         except Exception:  # noqa: BLE001
             # Keep provider details out of the agent result.
             return AgentResult(

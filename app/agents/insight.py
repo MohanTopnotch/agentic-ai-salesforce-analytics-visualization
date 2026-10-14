@@ -1,4 +1,4 @@
-#Explain observed results, identify outliers, and provide evidence-backed insights. Clearly label possible causes as hypotheses when they have not been established by the data.from app.agents.base 
+# Explain observed results, identify outliers, and provide evidence-backed insights. Clearly label possible causes as hypotheses when they have not been established by the data.from app.agents.base
 from app.agents.base import (
     AgentContext,
     AgentProvenance,
@@ -30,7 +30,7 @@ class InsightAgent(BaseAgent):
                     source_refs=("verification",),
                 ),
                 validation_status="failed",
-                error_message="Analysis verification is required.",
+                # error ="Analysis verification is required.",
             )
 
         if not rows:
@@ -63,10 +63,7 @@ class InsightAgent(BaseAgent):
             except (TypeError, ValueError, OverflowError):
                 continue
 
-            message = (
-                f"Sales for {region} totaled "
-                f"${numeric_amount:,.2f}."
-            )
+            message = f"Sales for {region} totaled ${numeric_amount:,.2f}."
 
             if count is not None:
                 message = (
@@ -82,10 +79,7 @@ class InsightAgent(BaseAgent):
 
             # Only use a template when its required fields exist.
             if region is not None and amount is not None:
-                message = (
-                    f"Sales for {region} totaled "
-                    f"${float(amount):,.2f}."
-                )
+                message = f"Sales for {region} totaled ${float(amount):,.2f}."
 
                 if count is not None:
                     message = (

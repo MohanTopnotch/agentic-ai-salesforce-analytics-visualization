@@ -1,4 +1,3 @@
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Literal
@@ -12,9 +11,7 @@ class AgentContext:
     user_question: str = ""
 
     intent: dict[str, Any] = field(default_factory=dict)
-    conversation_history: list[dict[str, Any]] = field(
-        default_factory=list
-    )
+    conversation_history: list[dict[str, Any]] = field(default_factory=list)
     # Salesforce metadata discovered for the current request.
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -26,9 +23,7 @@ class AgentContext:
     # Optional user identity for authorization.
     user_id: str | None = None
     # Analytical output consumed by downstream agents.
-    calculated_data: list[dict[str, Any]] = field(
-        default_factory=list
-    )
+    calculated_data: list[dict[str, Any]] = field(default_factory=list)
 
     # Verification results from the analysis/auditor agent.
     verification: dict[str, Any] = field(default_factory=dict)

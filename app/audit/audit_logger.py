@@ -22,7 +22,7 @@ class AuditLogger:
             "'[REDACTED]'",
             query,
         )
-    
+
     def find_by_request_id(
         self,
         request_id: str,
@@ -36,10 +36,13 @@ class AuditLogger:
 
         latest_record: dict[str, Any] | None = None
 
-        with self._lock, self.log_path.open(
-            "r",
-            encoding="utf-8",
-        ) as file:
+        with (
+            self._lock,
+            self.log_path.open(
+                "r",
+                encoding="utf-8",
+            ) as file,
+        ):
             for line in file:
                 if not line.strip():
                     continue
@@ -54,7 +57,6 @@ class AuditLogger:
                     latest_record = record
 
         return latest_record
-
 
     def log_run(
         self,
