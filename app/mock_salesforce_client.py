@@ -4,7 +4,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from copy import deepcopy
-from typing import Any
+from typing import Any, ClassVar
 
 
 class SalesforceQueryError(ValueError):
@@ -51,7 +51,7 @@ def _field(
 class MockSalesforceClient:
     """In-memory Salesforce mock with a restricted SOQL interface."""
 
-    OBJECTS = {
+    OBJECTS: ClassVar[dict[str, Any]] = {
         "Lead": {
             "fields": {
                 "Id": _field("Id", "id"),
@@ -490,21 +490,21 @@ class MockSalesforceClient:
                 "UNSUPPORTED_GROUPING",
                 "GROUP BY requires at least one aggregate function",
             )
-
-        if aggregates and plain_fields:
-            if any(field not in group_fields for field in plain_fields):
-                raise SalesforceQueryError(
-                    "INVALID_AGGREGATION",
+        if (
+            aggregates
+            and plain_fields
+            and any(field not in group_fields for field in plain_fields)
+        ):
+            raise SalesforceQueryError(
+                "INVALID_AGGREGATION",
                     "Selected non-aggregate fields must appear in GROUP BY",
-                )
-
+            )
         conditions = []
         if where_raw:
             for raw_condition in self._condition_parts(where_raw):
                 condition = self._parse_condition(raw_condition)
                 validate_field(condition[0], purpose="filter")
                 conditions.append(condition)
-
         rows = [
             deepcopy(row)
             for row in self._records.get(object_name, [])

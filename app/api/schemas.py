@@ -16,6 +16,14 @@ class AnalyticsQueryRequest(BaseModel):
         min_length=1,
         max_length=128,
     )
+    session_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+    )
+    conversation_history: list[dict[str, Any]] = Field(
+        default_factory=list,
+    )
 
     @field_validator("question")
     @classmethod
@@ -23,6 +31,18 @@ class AnalyticsQueryRequest(BaseModel):
         value = value.strip()
         if not value:
             raise ValueError("Question must not be blank.")
+        return value
+
+    @field_validator("session_id")
+    @classmethod
+    def session_id_must_not_be_blank(
+        cls,
+        value: str | None,
+    ) -> str | None:
+        if value is not None:
+            value = value.strip()
+            if not value:
+                raise ValueError("Session ID must not be blank.")
         return value
 
 

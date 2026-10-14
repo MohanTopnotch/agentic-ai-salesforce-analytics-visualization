@@ -55,6 +55,31 @@ class InsightAgent(BaseAgent):
             amount = row.get("Amount")
             count = row.get("OpportunityCount")
 
+            if region is None or amount is None:
+                continue
+
+            try:
+                numeric_amount = float(amount)
+            except (TypeError, ValueError, OverflowError):
+                continue
+
+            message = (
+                f"Sales for {region} totaled "
+                f"${numeric_amount:,.2f}."
+            )
+
+            if count is not None:
+                message = (
+                    f"Closed-won sales for {region} totaled "
+                    f"${numeric_amount:,.2f} across "
+                    f"{count} opportunities."
+                )
+
+            insights.append(message)
+            region = row.get("Region")
+            amount = row.get("Amount")
+            count = row.get("OpportunityCount")
+
             # Only use a template when its required fields exist.
             if region is not None and amount is not None:
                 message = (

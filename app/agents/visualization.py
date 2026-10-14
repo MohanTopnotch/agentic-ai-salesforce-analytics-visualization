@@ -1,7 +1,7 @@
 # app/agents/visualization.py
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from app.agents.base import (
     AgentContext,
@@ -14,7 +14,7 @@ from app.agents.base import (
 class VisualizationAgent(BaseAgent):
     name = "visualization"
 
-    DATE_FIELDS = {
+    DATE_FIELDS: ClassVar[set[str]] = {
         "date",
         "createddate",
         "closedate",
@@ -72,7 +72,7 @@ class VisualizationAgent(BaseAgent):
             )
 
         columns = list(dict.fromkeys(
-            key for row in rows for key in row.keys()
+           key for row in rows for key in row
         ))
 
         numeric_columns = [

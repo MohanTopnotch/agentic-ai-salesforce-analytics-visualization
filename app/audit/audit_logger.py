@@ -22,6 +22,39 @@ class AuditLogger:
             "'[REDACTED]'",
             query,
         )
+    
+    def find_by_request_id(
+        self,
+        request_id: str,
+    ) -> dict[str, Any] | None:
+        """Return the most recent audit record for a request."""
+        if not request_id or not request_id.strip():
+            return None
+
+        if not self.log_path.exists():
+            return None
+
+        latest_record: dict[str, Any] | None = None
+
+        with self._lock, self.log_path.open(
+            "r",
+            encoding="utf-8",
+        ) as file:
+            for line in file:
+                if not line.strip():
+                    continue
+
+                try:
+                    record = json.loads(line)
+                except json.JSONDecodeError:
+                    # Ignore incomplete or malformed JSONL records.
+                    continue
+
+                if record.get("request_id") == request_id:
+                    latest_record = record
+
+        return latest_record
+
 
     def log_run(
         self,

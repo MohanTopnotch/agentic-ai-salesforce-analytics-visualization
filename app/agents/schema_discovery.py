@@ -58,3 +58,11 @@ class SchemaDiscoveryAgent(BaseAgent):
                 error=f"Schema discovery failed: {exc}",
                 validation_status="failed",
             )
+        except Exception:  # noqa: BLE001
+            # Keep provider details out of the agent result.
+            return AgentResult(
+                status="error",
+                output={},
+                error="Schema discovery failed.",
+                validation_status="failed",
+            )

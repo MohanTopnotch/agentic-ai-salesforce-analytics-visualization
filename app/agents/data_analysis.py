@@ -1,16 +1,30 @@
-
 from collections import defaultdict
+from decimal import Decimal, InvalidOperation
+from typing import Any
 
-from app.agents.base import (
-    AgentContext,
-    AgentProvenance,
-    AgentResult,
-    BaseAgent,
-)
+from app.agents.base import AgentContext, AgentResult, BaseAgent
+from app.analysis.calculation import safe_sum
+from app.analysis.verification import verify_reconciliation
 
 
 class DataAnalysisAgent(BaseAgent):
     name = "data_analysis"
+
+    @staticmethod
+    def _to_decimal(value: Any) -> Decimal:
+        """Convert a valid numeric value without losing decimal precision."""
+        if value is None or isinstance(value, bool):
+            raise ValueError("Metric values must be valid numbers.")
+
+        try:
+            number = Decimal(str(value))
+        except (InvalidOperation, ValueError, TypeError) as exc:
+            raise ValueError("Metric values must be valid numbers.") from exc
+
+        if not number.is_finite():
+            raise ValueError("Metric values must be finite numbers.")
+
+        return number
 
     def run(self, context: AgentContext) -> AgentResult:
         records = context.raw_records
@@ -20,114 +34,113 @@ class DataAnalysisAgent(BaseAgent):
             context.verification = {
                 "status": "unverified",
                 "checks_passed": 0,
-                "checks_failed": 0,
+                "checks_failed": 1,
                 "reconciliation_delta": None,
                 "reason": "No records available for analysis.",
             }
-
             return AgentResult(
-                status="success",
+                status="error",
                 output={
                     "calculated_data": [],
                     "verification": context.verification,
                 },
-                provenance=AgentProvenance(
-                    agent_name=self.name,
-                    input_request_id=context.request_id,
-                    source_refs=("raw_records",),
-                ),
                 validation_status="failed",
-                error_message="Could not calculate or verify the requested metrics.",
+                error="No records available for analysis.",
             )
+
+        config = context.metadata.get("analysis", {})
+        metric = config.get("metric", "Amount")
+        dimension = config.get("dimension", "Region")
 
         try:
-            # Optional analysis configuration:
-            # context.metadata["analysis"] = {
-            #     "metric": "Amount",
-            #     "dimension": "Region",
-            # }
-            config = context.metadata.get("analysis", {})
-            metric = config.get("metric", "Amount")
-            dimension = config.get("dimension", "Region")
+            values_by_group: dict[str, list[Decimal]] = defaultdict(list)
+            validated_values: list[Decimal] = []
 
-            # Calculate the total directly from the raw records.
-            total_from_records = sum(
-                float(row[metric])
-                for row in records
-                if row.get(metric) is not None
-            )
-
-            # Independently calculate totals for each group.
-            grouped_totals: dict[str, float] = defaultdict(float)
-
+            # Validate every metric before aggregating anything.
             for row in records:
-                value = row.get(metric)
-                group = row.get(dimension)
+                if metric not in row:
+                    raise ValueError(
+                        f"Required metric field '{metric}' is missing."
+                    )
 
-                if value is None:
-                    continue
-
+                value = self._to_decimal(row[metric])
+                group_value = row.get(dimension)
                 group_name = (
-                    str(group) if group is not None else "Unknown"
+                    str(group_value)
+                    if group_value is not None
+                    else "Unknown"
                 )
-                grouped_totals[group_name] += float(value)
+
+                validated_values.append(value)
+                values_by_group[group_name].append(value)
+
+            # Reuse the existing deterministic Decimal calculation.
+            grand_total = safe_sum(validated_values)
 
             calculated_data = [
                 {
                     dimension: group,
-                    metric: total,
+                    metric: safe_sum(group_values),
                 }
-                for group, total in grouped_totals.items()
+                for group, group_values in sorted(values_by_group.items())
             ]
 
-            # Reconcile the grouped total with the raw-record total.
-            total_from_groups = sum(grouped_totals.values())
-            delta = abs(total_from_records - total_from_groups)
-            passed = delta < 0.01
-
-            context.calculated_data = calculated_data
-            context.verification = {
-                "status": "verified" if passed else "unverified",
-                "checks_passed": 2 if passed else 1,
-                "checks_failed": 0 if passed else 1,
-                "reconciliation_delta": round(delta, 10),
-            }
-
-            return AgentResult(
-                status="success",
-                output={
-                    "calculated_data": calculated_data,
-                    "verification": context.verification,
-                },
-                provenance=AgentProvenance(
-                    agent_name=self.name,
-                    input_request_id=context.request_id,
-                    source_refs=("raw_records",),
-                ),
-                validation_status="passed" if passed else "failed",
+            # Independently reconcile group totals against the raw total.
+            reconciliation = verify_reconciliation(
+                [
+                    self._to_decimal(row[metric])
+                    for row in calculated_data
+                ],
+                grand_total,
             )
 
-        except (TypeError, ValueError, KeyError):
+            # Preserve the reconciliation contract while using
+            # "unverified" for an unsuccessful analytical result.
+            verification = {
+                **reconciliation,
+                "status": (
+                    "verified"
+                    if reconciliation["status"] == "verified"
+                    else "unverified"
+                ),
+                "reason": (
+                    "Raw-record and grouped totals reconciled."
+                    if reconciliation["status"] == "verified"
+                    else "Grouped totals do not reconcile with the raw-record total."
+                ),
+            }
+
+            context.calculated_data = calculated_data
+            context.verification = verification
+
+            passed = verification["status"] == "verified"
+
+            return AgentResult(
+                status="success" if passed else "error",
+                output={
+                    "calculated_data": calculated_data,
+                    "verification": verification,
+                },
+                validation_status="passed" if passed else "failed",
+                error=None if passed else verification["reason"],
+            )
+
+        except (ValueError, TypeError, KeyError, InvalidOperation) as exc:
+            context.calculated_data = []
             context.verification = {
                 "status": "unverified",
                 "checks_passed": 0,
                 "checks_failed": 1,
                 "reconciliation_delta": None,
-                "reason": "Analysis input validation failed.",
+                "reason": f"Analysis input validation failed: {exc}",
             }
 
             return AgentResult(
                 status="error",
                 output={
+                    "calculated_data": [],
                     "verification": context.verification,
                 },
-                provenance=AgentProvenance(
-                    agent_name=self.name,
-                    input_request_id=context.request_id,
-                    source_refs=("raw_records",),
-                ),
                 validation_status="failed",
-                error_message=(
-                    "Could not calculate or verify the requested metrics."
-                ),
+                error="Could not calculate or verify the requested metrics.",
             )
