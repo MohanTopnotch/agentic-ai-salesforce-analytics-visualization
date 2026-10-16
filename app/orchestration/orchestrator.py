@@ -13,6 +13,9 @@ from uuid import uuid4
 from app.analysis.calculation import safe_sum
 from app.analysis.verification import verify_reconciliation
 from app.mock_salesforce_client import MockSalesforceClient
+from app.salesforce.client import SalesforceClient
+from app.salesforce.rest_client import SalesforceAPIError
+from app.security.soql_guard import SOQLSafetyGuard
 
 logger = logging.getLogger(__name__)
 
@@ -107,12 +110,15 @@ class AnalyticsOrchestrator:
         max_repair_attempts: int = MAX_QUERY_REPAIR_ATTEMPTS,
         agents: dict[str, Any] | None = None,
         audit_logger: Any | None = None,
+        salesforce_client: SalesforceClient | None = None,
     ) -> None:
         if not 0 <= max_repair_attempts <= MAX_QUERY_REPAIR_ATTEMPTS:
             raise ValueError("max_repair_attempts must be between 0 and 3")
 
         self.max_repair_attempts = max_repair_attempts
-        self.agents = self._build_default_agents() if agents is None else agents
+        self.agents = (
+            self._build_default_agents(salesforce_client) if agents is None else agents
+        )
         self.audit_logger = audit_logger
 
         # In-memory session store for local development. Use a persistent,
@@ -120,8 +126,35 @@ class AnalyticsOrchestrator:
         self.sessions: dict[str, dict[str, Any]] = {}
 
     @staticmethod
-    def _build_default_agents() -> dict[str, Any]:
-        client = MockSalesforceClient()
+    def _build_default_agents(
+        salesforce_client: SalesforceClient | None = None,
+    ) -> dict[str, Any]:
+        client = (
+            MockSalesforceClient() if salesforce_client is None else salesforce_client
+        )
+        safety_guard = SOQLSafetyGuard()
+
+        def salesforce_error_code(exc: SalesforceAPIError) -> str:
+            code = exc.code.upper()
+            if exc.status_code == 403 or code in {
+                "INSUFFICIENT_ACCESS",
+                "INSUFFICIENT_ACCESS_OR_READONLY",
+            }:
+                return "permission_denied"
+            if (
+                exc.status_code in {401, 429}
+                or (exc.status_code is not None and exc.status_code >= 500)
+                or code
+                in {
+                    "INVALID_CLIENT",
+                    "INVALID_GRANT",
+                    "SALESFORCE_CONNECTION_ERROR",
+                }
+            ):
+                return "provider_unavailable"
+            if code in {"INVALID_FIELD", "MALFORMED_QUERY"}:
+                return "invalid_field"
+            return "invalid_query"
 
         def query_understanding(context: RequestContext) -> SimpleNamespace:
             question = context.user_request
@@ -162,12 +195,12 @@ class AnalyticsOrchestrator:
 
                 if "descending" in normalized or "highest" in normalized:
                     intent["sort"] = {
-                        "field": "revenue",
+                        "field": "AnnualRevenue",
                         "direction": "DESC",
                     }
                 elif "ascending" in normalized or "lowest" in normalized:
                     intent["sort"] = {
-                        "field": "revenue",
+                        "field": "AnnualRevenue",
                         "direction": "ASC",
                     }
 
@@ -181,8 +214,8 @@ class AnalyticsOrchestrator:
                 "intent": "sales_analysis",
                 "original_question": question,
                 "entities": [],
-                "metrics": ["revenue"],
-                "group_by": ["region"],
+                "metrics": ["AnnualRevenue"],
+                "group_by": ["Industry"],
                 "filters": [],
                 "sort": None,
                 "limit": limit,
@@ -196,13 +229,23 @@ class AnalyticsOrchestrator:
             )
 
         def schema_discovery(context: RequestContext) -> SimpleNamespace:
-            accessible_objects = client.get_accessible_objects()
-            metadata = {
-                "accessible_objects": accessible_objects,
-                "object_metadata": {
-                    obj: client.describe_object(obj) for obj in accessible_objects
-                },
-            }
+            try:
+                accessible_objects = client.get_accessible_objects(
+                    user_id=context.user_id,
+                )
+                described_objects = ["Lead"] if "Lead" in accessible_objects else []
+                metadata = {
+                    "accessible_objects": accessible_objects,
+                    "object_metadata": {
+                        obj: client.describe_object(obj) for obj in described_objects
+                    },
+                }
+            except SalesforceAPIError as exc:
+                return SimpleNamespace(
+                    status="error",
+                    output={"error_code": salesforce_error_code(exc)},
+                    error="Salesforce metadata discovery failed.",
+                )
             return SimpleNamespace(
                 status="success",
                 output={"metadata": metadata},
@@ -210,13 +253,8 @@ class AnalyticsOrchestrator:
             )
 
         def query_planning(context: RequestContext) -> SimpleNamespace:
-            # This fallback is intentionally a known, fixed mock query.
-            # Replace it with the project QueryPlanningAgent to make the
-            # SOQL reflect context.intent and follow-up changes dynamically.
-            soql = (
-                "SELECT Id, Company, AnnualRevenue, Industry, "
-                "LeadSource, Rating FROM Lead LIMIT 10"
-            )
+            # Keep the current fixed plan narrow until dynamic planning is wired.
+            soql = "SELECT AnnualRevenue, Industry FROM Lead LIMIT 10"
             context.soql_query = soql
             return SimpleNamespace(
                 status="success",
@@ -224,14 +262,7 @@ class AnalyticsOrchestrator:
                     "query_plan": {
                         "soql_query": soql,
                         "object_name": "Lead",
-                        "fields": [
-                            "Id",
-                            "Company",
-                            "AnnualRevenue",
-                            "Industry",
-                            "LeadSource",
-                            "Rating",
-                        ],
+                        "fields": ["AnnualRevenue", "Industry"],
                         "filters": [],
                         "limit": 10,
                     }
@@ -240,23 +271,45 @@ class AnalyticsOrchestrator:
             )
 
         def query_validation(context: RequestContext) -> SimpleNamespace:
-            # Production validation should invoke the project's SOQL guard.
             query = context.soql_query or ""
-            if not query.strip():
+            object_metadata = context.metadata.get("object_metadata", {})
+            accessible_fields = {
+                object_name: set(metadata.get("field_names", []))
+                for object_name, metadata in object_metadata.items()
+            }
+            try:
+                validated_query = safety_guard.validate_query(
+                    soql=query,
+                    user_id=context.user_id or "salesforce-integration",
+                    accessible_objects=set(
+                        context.metadata.get("accessible_objects", [])
+                    ),
+                    accessible_fields=accessible_fields,
+                )
+            except PermissionError:
+                return SimpleNamespace(
+                    status="error",
+                    output={
+                        "error_code": "permission_denied",
+                        "validation": {"status": "failed"},
+                    },
+                    error="Salesforce object or field access was denied.",
+                )
+            except ValueError:
                 return SimpleNamespace(
                     status="error",
                     output={
                         "error_code": "invalid_query",
                         "validation": {"status": "failed"},
                     },
-                    error="SOQL query is empty.",
+                    error="SOQL query validation failed.",
                 )
             return SimpleNamespace(
                 status="success",
                 output={
                     "validation": {
                         "status": "passed",
-                        "soql_query": query,
+                        "soql_query": validated_query,
                     }
                 },
                 error=None,
@@ -266,19 +319,52 @@ class AnalyticsOrchestrator:
             query = context.soql_query or "SELECT Id FROM Lead LIMIT 1"
             try:
                 rows = client.query(query)["records"]
-            except Exception:  # noqa: BLE001
-                # Keep provider internals out of the caller response.
+            except SalesforceAPIError as exc:
+                error_code = salesforce_error_code(exc)
                 return SimpleNamespace(
                     status="error",
-                    output={"error_code": "invalid_query"},
-                    error="Mock Salesforce query execution failed.",
+                    output={"error_code": error_code},
+                    error=(
+                        "Salesforce access was denied."
+                        if error_code == "permission_denied"
+                        else "Salesforce query execution failed."
+                    ),
+                )
+            except Exception as exc:  # noqa: BLE001
+                error_code = "invalid_query"
+                error_message = "Salesforce query execution failed."
+                if hasattr(exc, "status_code"):
+                    status_code = exc.status_code
+                    provider_code = str(getattr(exc, "code", "")).upper()
+                    if status_code == 403 or provider_code in {
+                        "INSUFFICIENT_ACCESS",
+                        "INSUFFICIENT_ACCESS_OR_READONLY",
+                    }:
+                        error_code = "permission_denied"
+                        error_message = "Salesforce access was denied."
+                    elif (
+                        status_code == 401
+                        or status_code == 429
+                        or (isinstance(status_code, int) and status_code >= 500)
+                    ):
+                        error_code = "provider_unavailable"
+                        error_message = "Salesforce is temporarily unavailable."
+                    elif provider_code in {"INVALID_FIELD", "MALFORMED_QUERY"}:
+                        error_code = "invalid_field"
+                elif getattr(exc, "code", "") == "SALESFORCE_CONNECTION_ERROR":
+                    error_code = "provider_unavailable"
+                    error_message = "Salesforce is temporarily unavailable."
+                return SimpleNamespace(
+                    status="error",
+                    output={"error_code": error_code},
+                    error=error_message,
                 )
             return SimpleNamespace(
                 status="success",
                 output={
                     "query_results": rows,
                     "lineage": {
-                        "source": "MockSalesforceClient",
+                        "source": type(client).__name__,
                         "query": query,
                     },
                 },
@@ -470,7 +556,7 @@ class AnalyticsOrchestrator:
                     }
                 ],
                 "layout": {
-                    "title": {"text": "Sales by Industry"},
+                    "title": {"text": "Lead Annual Revenue by Industry"},
                     "autosize": True,
                 },
                 "config": {
@@ -488,9 +574,9 @@ class AnalyticsOrchestrator:
             rows = context.calculated_data or []
             insights = [
                 (
-                    f"{row.get('Industry', 'Unknown')} contributed "
-                    f"${float(row.get('AnnualRevenue', 0) or 0):,.2f} "
-                    "in recorded revenue."
+                    f"Lead records in {row.get('Industry', 'Unknown')} list "
+                    "combined AnnualRevenue of "
+                    f"${float(row.get('AnnualRevenue', 0) or 0):,.2f}."
                 )
                 for row in rows
             ] or ["No revenue records were available for analysis."]

@@ -1,8 +1,18 @@
 # System Design — Agentic AI Salesforce Data Analytics & Visualization Assistant
 
+> **Implementation status:** This document describes the target architecture.
+> The API defaults to an in-memory mock client and deterministic default
+> handlers. A client-credentials Salesforce REST client can be enabled with
+> `SALESFORCE_MODE=live`; the default query planner remains fixed to Lead
+> revenue analysis. Standalone MCP tools are not wired into the API workflow.
+> See [IMPLEMENTED_WORKFLOW.md](./IMPLEMENTED_WORKFLOW.md) for details.
+
 ## 1. Architecture Overview
 
-The system accepts natural-language questions through a web interface or API. A FastAPI service authenticates the request and passes it to an orchestrator.
+The target system accepts natural-language questions through a web interface or
+API. A FastAPI service authenticates the request and passes it to an
+orchestrator. In the current implementation, the API validates the request
+schema but does not authenticate the caller.
 
 The orchestrator coordinates specialized agents and shared services. The LLM is responsible for interpreting the user's intent and generating explanations. Deterministic application code is responsible for authorization enforcement, safe query construction, calculations, and verification.
 
@@ -138,7 +148,7 @@ Agent Orchestrator
 
 If a recoverable query error occurs, the system may revise the query plan or query within the configured retry limit. Every retry must repeat the required safety checks.
 
-## 5. Salesforce Integration
+## 5. Salesforce Integration (Target)
 
 Define a common adapter interface so that the application can use either mock data or a real Salesforce connection.
 
@@ -149,7 +159,12 @@ The adapter should support:
 * Executing validated read-only queries.
 * Returning normalized records and structured errors.
 
-The mock adapter is used during early development. The production adapter uses approved Salesforce authentication and respects the permissions of the authenticated identity.
+The API defaults to an in-memory mock adapter. A Salesforce REST adapter using
+OAuth client credentials is available when `SALESFORCE_MODE=live` and the
+required backend credentials are configured. Its permissions are those of the
+Salesforce user assigned as the Connected App's run-as identity. A future
+multi-user application should use an approved per-user identity flow and enforce
+application authentication and authorization.
 
 Credentials must be stored in environment configuration or a secret manager, never in source code.
 

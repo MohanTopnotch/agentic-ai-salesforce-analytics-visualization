@@ -127,7 +127,7 @@ async function runAnalysis() {
     const response = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, user_id: "web-dashboard-user" }),
+      body: JSON.stringify({ question }),
     });
 
     const payload = await response.json().catch(() => ({}));

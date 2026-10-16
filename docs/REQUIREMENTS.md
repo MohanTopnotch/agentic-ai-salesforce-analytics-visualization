@@ -1,5 +1,11 @@
 # Requirements Analysis — Agentic AI Salesforce Data Analytics & Visualization Assistant
 
+> **Status note:** This is the project requirement baseline, not proof every
+> requirement is implemented or accepted. The current query workflow, live
+> Salesforce adapter setup, and known gaps are recorded in
+> [IMPLEMENTED_WORKFLOW.md](./IMPLEMENTED_WORKFLOW.md); phase-by-phase evidence
+> is in [PROJECT_DELIVERABLES.md](./PROJECT_DELIVERABLES.md).
+
 ## 1. Project Objective
 
 The objective is to build an AI-powered application that enables business users and financial auditors to analyze Salesforce data using natural-language questions.

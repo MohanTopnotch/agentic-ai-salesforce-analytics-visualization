@@ -1,6 +1,17 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
+from app.api.routes import get_orchestrator
 from app.api.routes import router as analytics_router
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    get_orchestrator()
+    yield
+
 
 app = FastAPI(
     title="Agentic Salesforce Analytics API",
@@ -9,6 +20,7 @@ app = FastAPI(
         "Natural-language Salesforce analytics, "
         "query execution, verification, and visualization."
     ),
+    lifespan=lifespan,
 )
 
 app.include_router(
