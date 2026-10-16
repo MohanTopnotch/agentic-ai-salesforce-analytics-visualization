@@ -1,0 +1,26 @@
+[
+  {
+    "Id": "OPP001",
+    "Name": "North Region Renewal",
+    "Amount": 150000,
+    "StageName": "Closed Won",
+    "CloseDate": "2026-02-15",
+    "Region": "North"
+  },
+  {
+    "Id": "OPP002",
+    "Name": "West Region Expansion",
+    "Amount": 250000,
+    "StageName": "Negotiation",
+    "CloseDate": "2026-03-20",
+    "Region": "West"
+  },
+  {
+    "Id": "OPP003",
+    "Name": "South Region Upgrade",
+    "Amount": 100000,
+    "StageName": "Closed Won",
+    "CloseDate": "2026-03-25",
+    "Region": "South"
+  }
+]

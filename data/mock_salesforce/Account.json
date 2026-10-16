@@ -1,0 +1,21 @@
+
+[
+  {
+    "Id": "0010001",
+    "Name": "Acme Global",
+    "Industry": "Manufacturing",
+    "AnnualRevenue": 15000000,
+    "BillingState": "CA",
+    "BillingCountry": "USA",
+    "CreatedDate": "2025-01-10T08:00:00"
+  },
+  {
+    "Id": "0010002",
+    "Name": "TechNova Corp",
+    "Industry": "Technology",
+    "AnnualRevenue": 28000000,
+    "BillingState": "NY",
+    "BillingCountry": "USA",
+    "CreatedDate": "2025-02-14T10:30:00"
+  }
+]

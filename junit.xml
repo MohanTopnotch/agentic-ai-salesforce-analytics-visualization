@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="59" time="1.213" timestamp="2026-10-14T23:53:48.203013+05:30" hostname="DESKTOP-7EDT9CP"><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Show total sales by region.]" time="0.014" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Who are the top 10 sales representatives?]" time="0.008" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Show monthly revenue for 2026.]" time="0.009" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Compare this year's revenue with last year's.]" time="0.006" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Show opportunity pipeline by stage.]" time="0.008" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Which opportunities are likely to close this month?]" time="0.008" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Show opportunities above $100K.]" time="0.007" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Show the top 20 customers by revenue.]" time="0.015" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Which customers haven't purchased in the last 6 months?]" time="0.012" /><testcase classname="tests.integration.test_pipeline" name="test_analytics_query_pipeline[Show lead conversion rate by source.]" time="0.007" /><testcase classname="tests.integration.test_pipeline" name="test_query_endpoint_rejects_empty_question" time="0.006" /><testcase classname="tests.integration.test_pipeline" name="test_query_endpoint_rejects_missing_question" time="0.008" /><testcase classname="tests.unit.test_calculation" name="test_safe_sum" time="0.001" /><testcase classname="tests.unit.test_calculation" name="test_closed_won_revenue" time="0.001" /><testcase classname="tests.unit.test_calculation" name="test_lead_conversion_rate" time="0.001" /><testcase classname="tests.unit.test_calculation" name="test_empty_leads" time="0.001" /><testcase classname="tests.unit.test_calculation" name="test_yoy_growth" time="0.001" /><testcase classname="tests.unit.test_calculation" name="test_yoy_zero_denominator" time="0.001" /><testcase classname="tests.unit.test_calculation" name="test_reconciliation_passes" time="0.001" /><testcase classname="tests.unit.test_calculation" name="test_reconciliation_fails" time="0.001" /><testcase classname="tests.unit.test_data_analysis" name="test_analysis_reconciles_grouped_totals" time="0.001" /><testcase classname="tests.unit.test_data_analysis" name="test_invalid_metric_does_not_pass_verification" time="0.001" /><testcase classname="tests.unit.test_data_analysis" name="test_empty_records_are_not_verified" time="0.001" /><testcase classname="tests.unit.test_health" name="test_health_check" time="0.008" /><testcase classname="tests.unit.test_insight" name="test_insight_requires_verification" time="0.001"><failure message="TypeError: AgentResult.__init__() got an unexpected keyword argument 'error_message'">def test_insight_requires_verification():
+        agent = InsightAgent()
+    
+        context = AgentContext(
+            request_id="test-1",
+            verification={"status": "unverified"},
+        )
+    
+&gt;       result = agent.run(context)
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_insight.py:13: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;app.agents.insight.InsightAgent object at 0x000001F3571A9400&gt;
+context = AgentContext(request_id='test-1', user_question='', intent={}, conversation_history=[], metadata={}, soql_query=None, ...ords=[], query_results=[], user_id=None, calculated_data=[], verification={'status': 'unverified'}, visualization=None)
+
+    def run(self, context: AgentContext) -&gt; AgentResult:
+        verification = context.verification
+        rows = context.calculated_data
+    
+        if verification.get("status") != "verified":
+&gt;           return AgentResult(
+                status="error",
+                output={
+                    "insights": [],
+                    "diagnostic": (
+                        "Insights were not generated because "
+                        "the analytical results are not verified."
+                    ),
+                },
+                provenance=AgentProvenance(
+                    agent_name=self.name,
+                    input_request_id=context.request_id,
+                    source_refs=("verification",),
+                ),
+                validation_status="failed",
+                error_message="Analysis verification is required.",
+            )
+E           TypeError: AgentResult.__init__() got an unexpected keyword argument 'error_message'
+
+app\agents\insight.py:18: TypeError</failure></testcase><testcase classname="tests.unit.test_mock_salesforce_client" name="test_load_sample_records" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_describe_object" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_accessible_objects" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_filter_by_rating" time="0.002" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_filter_by_annual_revenue" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_group_and_aggregate" time="0.002" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_limit" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_unknown_object_returns_structured_error" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_unknown_field_returns_structured_error" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_unsupported_query_is_rejected" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_subquery_is_rejected" time="0.001" /><testcase classname="tests.unit.test_mock_salesforce_client" name="test_invalid_metadata_object" time="0.001" /><testcase classname="tests.unit.test_orchestrator" name="test_create_request_context" time="0.001" /><testcase classname="tests.unit.test_orchestrator" name="test_empty_request_is_rejected" time="0.002" /><testcase classname="tests.unit.test_orchestrator" name="test_invalid_request_type_is_rejected" time="0.002" /><testcase classname="tests.unit.test_orchestrator" name="test_repair_attempt_limit_is_enforced" time="0.002" /><testcase classname="tests.unit.test_orchestrator" name="test_missing_agent_returns_structured_error" time="0.001" /><testcase classname="tests.unit.test_query_understanding" name="test_detect_sales_by_region" time="0.002"><failure message="AttributeError: 'QueryUnderstandingAgent' object has no attribute '_result'">def test_detect_sales_by_region():
+        agent = QueryUnderstandingAgent()
+    
+        context = AgentContext(
+            request_id="test-1",
+            user_question="Show total sales by region",
+        )
+    
+&gt;       result = agent.run(context)
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\unit\test_query_understanding.py:13: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = &lt;app.agents.query_understanding.QueryUnderstandingAgent object at 0x000001F3571AABA0&gt;
+context = AgentContext(request_id='test-1', user_question='Show total sales by region', intent={'intent': 'revenue_analysis', 'o...ql_query=None, raw_records=[], query_results=[], user_id=None, calculated_data=[], verification={}, visualization=None)
+
+    def run(self, context: AgentContext) -&gt; AgentResult:
+        question = self._get_question(context)
+    
+        if not question:
+            return self._result(
+                status="needs_clarification",
+                output={
+                    "clarification_question": (
+                        "What Salesforce data would you like to analyze?"
+                    )
+                },
+                message="A question is required.",
+            )
+    
+        normalized = self._normalize(question)
+        prior_intent = self._get_prior_intent(context)
+        is_follow_up = self._detect_follow_up(normalized, context)
+    
+        # A follow-up requires an earlier intent to inherit.
+        if is_follow_up and not prior_intent:
+            return self._result(
+                status="needs_clarification",
+                output={
+                    "clarification_question": (
+                        "Which previous analysis should I refine? "
+                        "Please restate the metric or analysis."
+                    )
+                },
+                message="No previous analysis is available for this follow-up.",
+            )
+    
+        detected_intent = self._detect_intent(normalized)
+        detected_metrics = self._detect_metrics(normalized)
+        detected_group_by = self._detect_group_by(normalized)
+        detected_filters = self._extract_basic_filters(normalized)
+        detected_sort = self._detect_sort(normalized)
+        detected_limit = self._detect_limit(normalized)
+    
+        if is_follow_up and prior_intent:
+            intent = self._merge_follow_up(
+                question=question,
+                prior_intent=prior_intent,
+                detected_intent=detected_intent,
+                detected_metrics=detected_metrics,
+                detected_group_by=detected_group_by,
+                detected_filters=detected_filters,
+                detected_sort=detected_sort,
+                detected_limit=detected_limit,
+            )
+        else:
+            intent = {
+                "intent": detected_intent,
+                "original_question": question,
+                "entities": self._extract_entities(normalized),
+                "metrics": detected_metrics or ["count"],
+                "group_by": detected_group_by,
+                "filters": detected_filters,
+                "sort": detected_sort,
+                "limit": detected_limit,
+                "is_follow_up": False,
+                "clarification_question": None,
+            }
+    
+        context.intent = intent
+    
+&gt;       return self._result(
+               ^^^^^^^^^^^^
+            status="success",
+            output={"intent": intent},
+            message="Query intent identified.",
+        )
+E       AttributeError: 'QueryUnderstandingAgent' object has no attribute '_result'
+
+app\agents\query_understanding.py:176: AttributeError</failure></testcase><testcase classname="tests.unit.test_soql_agent" name="test_soql_agent_generates_validated_query" time="0.002" /><testcase classname="tests.unit.test_soql_guard" name="test_allows_permitted_select" time="0.002" /><testcase classname="tests.unit.test_soql_guard" name="test_allows_group_by_and_aggregate" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_allows_and_or_conditions" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_denies_empty_object_permissions" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_denies_unauthorized_field" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_denies_unauthorized_object" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_rejects_unsafe_queries[DELETE FROM Account]" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_rejects_unsafe_queries[SELECT Id FROM Account; SELECT Id FROM Account]" time="0.002" /><testcase classname="tests.unit.test_soql_guard" name="test_rejects_unsafe_queries[SELECT Id FROM Account -- comment]" time="0.002" /><testcase classname="tests.unit.test_soql_guard" name="test_rejects_unsafe_queries[SELECT Id FROM Account /* comment */]" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_rejects_unsafe_queries[SELECT Id FROM Account WHERE SecretField = 'x']" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_rejects_unsafe_queries[SELECT Id FROM Account LIMIT 0]" time="0.001" /><testcase classname="tests.unit.test_soql_guard" name="test_rejects_unsafe_queries[]" time="0.002" /><testcase classname="tests.unit.test_soql_guard" name="test_rejects_missing_user" time="0.001" /><testcase classname="tests.unit.test_visualization" name="test_visualization_generates_bar_chart" time="0.001" /></testsuite></testsuites>
