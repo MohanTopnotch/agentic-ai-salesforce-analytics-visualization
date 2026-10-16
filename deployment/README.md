@@ -7,10 +7,16 @@
 - `deployment/nginx.conf`: serves the frontend and proxies `/api/` calls to FastAPI.
 
 ## Run from the repository root
-Prerequisites: Docker Desktop running, and the project root contains a valid `pyproject.toml` that installs the package and includes FastAPI/Uvicorn dependencies.
+
+Prerequisite: Docker Desktop is installed and running. A host Python installation
+or `.venv` is **not** required to build or run the containers. The API image uses
+Python 3.12 and installs the project dependencies from `pyproject.toml` inside
+the image. `.dockerignore` excludes any local `.venv` from the Docker build
+context.
 
 ```powershell
-docker compose -f deployment/docker-compose.yml up --build
+docker compose -f .\deployment\docker-compose.yml config
+docker compose -f .\deployment\docker-compose.yml up --build
 ```
 
 Open:
@@ -20,7 +26,17 @@ Open:
 
 Stop:
 ```powershell
-docker compose -f deployment/docker-compose.yml down
+docker compose -f .\deployment\docker-compose.yml down
+```
+
+`python -m pip install ruff` and activating `.venv` are only relevant to local
+Python development and linting; they are not prerequisites for Docker Compose.
+For local development on Windows, create and activate an environment separately:
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
 ```
 
 ## Salesforce data source
@@ -52,9 +68,9 @@ inject them from the platform's secret manager. Live mode fails at API startup
 if the client ID or secret is missing; it does not fall back to mock records.
 Configuration is checked as the API starts.
 
-The current planner intentionally issues a fixed, limited Lead query for
-`AnnualRevenue` and `Industry`. It does not yet translate arbitrary natural
-language questions into dynamic SOQL. A single Salesforce run-as user supplies
+The default planner supports a documented set of Lead and Opportunity analytics
+and asks for clarification for unsupported requests; it does not translate
+arbitrary natural language into SOQL. A single Salesforce run-as user supplies
 the permissions for every request; the current web UI's `user_id` is not
 authentication. Do not expose this service publicly until application-user
 authentication and authorization are added.
