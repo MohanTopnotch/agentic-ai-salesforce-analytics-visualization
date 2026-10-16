@@ -255,9 +255,8 @@ class AnalyticsOrchestrator:
                     if "pipeline" in normalized
                     else [("StageName", "=", "Closed Won")]
                 )
-            elif (
-                has_sales_metric
-                and ("month" in normalized or "monthly" in normalized)
+            elif has_sales_metric and (
+                "month" in normalized or "monthly" in normalized
             ):
                 object_name, metric, dimension = "Opportunity", "Amount", "CloseDate"
                 filters = [("StageName", "=", "Closed Won")]
@@ -335,9 +334,7 @@ class AnalyticsOrchestrator:
                     "Lead",
                 )
                 described_objects = (
-                    [requested_object]
-                    if requested_object in accessible_objects
-                    else []
+                    [requested_object] if requested_object in accessible_objects else []
                 )
                 metadata = {
                     "accessible_objects": accessible_objects,
@@ -709,8 +706,10 @@ class AnalyticsOrchestrator:
                 "StageName": "stage",
             }.get(dimension, dimension)
             metric_label = (
-                "revenue" if "revenue" in metric.lower()
-                else "sales amount" if metric == "Amount"
+                "revenue"
+                if "revenue" in metric.lower()
+                else "sales amount"
+                if metric == "Amount"
                 else metric
             )
             insights = [

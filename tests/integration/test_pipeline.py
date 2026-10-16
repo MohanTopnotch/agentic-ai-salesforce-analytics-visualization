@@ -105,8 +105,7 @@ def test_sales_by_region_returns_opportunity_amounts_by_region():
     assert body["data"]["query_plan"]["object_name"] == "Opportunity"
     assert body["data"]["query_plan"]["fields"] == ["Amount", "Region"]
     assert {
-        row["Region"]: float(row["Amount"])
-        for row in body["data"]["calculated_data"]
+        row["Region"]: float(row["Amount"]) for row in body["data"]["calculated_data"]
     } == {
         "North": 150000,
         "South": 100000,

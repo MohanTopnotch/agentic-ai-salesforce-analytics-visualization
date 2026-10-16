@@ -82,7 +82,7 @@ class MockSalesforceClient(SalesforceClient):
                 "CloseDate": _field("CloseDate", "date"),
                 "Region": _field("Region", "string"),
             }
-        }
+        },
     }
 
     def __init__(self, records: dict[str, list[dict]] | None = None):

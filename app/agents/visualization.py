@@ -87,9 +87,7 @@ class VisualizationAgent(BaseAgent):
         columns = list(dict.fromkeys(key for row in rows for key in row))
 
         numeric_columns = [
-            column
-            for column in columns
-            if self._is_numeric_column(column, rows)
+            column for column in columns if self._is_numeric_column(column, rows)
         ]
 
         date_columns = [
@@ -198,11 +196,7 @@ class VisualizationAgent(BaseAgent):
             return date_columns[0]
 
         return next(
-            (
-                column
-                for column in columns
-                if column not in numeric_columns
-            ),
+            (column for column in columns if column not in numeric_columns),
             next((column for column in columns if column not in numeric_columns), None),
         )
 
@@ -214,14 +208,18 @@ class VisualizationAgent(BaseAgent):
             return "donut"
         if any(term in normalized for term in ("pie", "circle chart")):
             return "pie"
-        if any(
-            term in normalized for term in ("line chart", "line graph", "trend")
-        ) or " line " in padded:
+        if (
+            any(term in normalized for term in ("line chart", "line graph", "trend"))
+            or " line " in padded
+        ):
             return "line"
-        if any(
-            term in normalized
-            for term in ("bar chart", "bar graph", "column chart")
-        ) or " bar " in padded:
+        if (
+            any(
+                term in normalized
+                for term in ("bar chart", "bar graph", "column chart")
+            )
+            or " bar " in padded
+        ):
             return "bar"
         return None
 
@@ -278,8 +276,7 @@ class VisualizationAgent(BaseAgent):
             trace = {
                 "type": "pie",
                 "labels": [
-                    str(value) if value is not None else "Unknown"
-                    for value in x_values
+                    str(value) if value is not None else "Unknown" for value in x_values
                 ],
                 "values": y_values,
                 "hole": 0.5 if chart_type == "donut" else 0,
@@ -293,8 +290,7 @@ class VisualizationAgent(BaseAgent):
                 "type": "scatter" if chart_type == "line" else "bar",
                 **({"mode": "lines+markers"} if chart_type == "line" else {}),
                 "x": [
-                    str(value) if value is not None else "Unknown"
-                    for value in x_values
+                    str(value) if value is not None else "Unknown" for value in x_values
                 ],
                 "y": y_values,
                 "name": y_label,
