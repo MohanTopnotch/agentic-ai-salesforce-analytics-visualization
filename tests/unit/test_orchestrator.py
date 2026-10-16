@@ -1,5 +1,6 @@
 import pytest
 
+from app.mock_salesforce_client import MockSalesforceClient
 from app.orchestration.orchestrator import (
     AnalyticsOrchestrator,
     WorkflowErrorCode,
@@ -51,3 +52,35 @@ def test_missing_agent_returns_structured_error():
     assert response.status == "error"
     assert response.state == WorkflowState.FAILED
     assert response.error_code == WorkflowErrorCode.INTERNAL_ERROR
+
+
+def test_injected_salesforce_client_is_used_for_metadata_and_queries():
+    class TrackingSalesforceClient(MockSalesforceClient):
+        def __init__(self):
+            super().__init__()
+            self.metadata_reads = 0
+            self.query_reads = 0
+
+        def get_accessible_objects(self, user_id=None):
+            self.metadata_reads += 1
+            return super().get_accessible_objects(user_id)
+
+        def query(self, soql):
+            self.query_reads += 1
+            return super().query(soql)
+
+    client = TrackingSalesforceClient()
+    orchestrator = AnalyticsOrchestrator(salesforce_client=client)
+
+    response = orchestrator.run("Show revenue by industry")
+
+    assert response.status == "success"
+    assert response.data["lineage"]["source"] == "TrackingSalesforceClient"
+    assert response.data["intent"]["metrics"] == ["AnnualRevenue"]
+    assert response.data["intent"]["group_by"] == ["Industry"]
+    assert (
+        response.data["visualization"]["layout"]["title"]["text"]
+        == "Lead Annual Revenue by Industry"
+    )
+    assert client.metadata_reads == 1
+    assert client.query_reads == 1

@@ -4,7 +4,11 @@ services:
       context: ..
       dockerfile: deployment/Dockerfile
     environment:
-      SALESFORCE_MODE: mock
+      SALESFORCE_MODE: ${SALESFORCE_MODE:-mock}
+      SALESFORCE_LOGIN_URL: ${SALESFORCE_LOGIN_URL:-https://login.salesforce.com}
+      SALESFORCE_API_VERSION: ${SALESFORCE_API_VERSION:-v66.0}
+      SALESFORCE_CLIENT_ID: ${SALESFORCE_CLIENT_ID:-}
+      SALESFORCE_CLIENT_SECRET: ${SALESFORCE_CLIENT_SECRET:-}
       PYTHONUNBUFFERED: "1"
     ports:
       - "8000:8000"

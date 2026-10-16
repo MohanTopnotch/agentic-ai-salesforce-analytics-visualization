@@ -8,19 +8,15 @@ from app.api.schemas import (
     AnalyticsQueryResponse,
 )
 from app.orchestration.orchestrator import AnalyticsOrchestrator
+from app.salesforce.factory import create_salesforce_client
 
 router = APIRouter(tags=["Analytics"])
 
 
 @lru_cache(maxsize=1)
 def get_orchestrator() -> AnalyticsOrchestrator:
-    """
-    Return the configured orchestrator.
-
-    Register your actual agents and dependencies here.
-    Do not leave the agent registry empty in production.
-    """
-    return AnalyticsOrchestrator()
+    """Return the orchestrator configured with the selected Salesforce client."""
+    return AnalyticsOrchestrator(salesforce_client=create_salesforce_client())
 
 
 @router.post(

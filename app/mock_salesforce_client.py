@@ -5,6 +5,8 @@ from collections import defaultdict
 from copy import deepcopy
 from typing import Any, ClassVar
 
+from app.salesforce.client import SalesforceClient
+
 
 class SalesforceQueryError(ValueError):
     """A predictable, structured error from the mock Salesforce API."""
@@ -47,7 +49,7 @@ def _field(
     }
 
 
-class MockSalesforceClient:
+class MockSalesforceClient(SalesforceClient):
     """In-memory Salesforce mock with a restricted SOQL interface."""
 
     OBJECTS: ClassVar[dict[str, Any]] = {
