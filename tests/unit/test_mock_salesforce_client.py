@@ -27,7 +27,7 @@ def test_describe_object(client):
 
 
 def test_accessible_objects(client):
-    assert client.get_accessible_objects() == ["Lead"]
+    assert client.get_accessible_objects() == ["Lead", "Opportunity"]
 
 
 def test_filter_by_rating(client):

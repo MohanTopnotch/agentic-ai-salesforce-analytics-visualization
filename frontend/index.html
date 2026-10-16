@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Salesforce Agentic Analytics Assistant</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/styles.css">
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
@@ -118,7 +115,7 @@
           </button>
           <button class="chip">
             <span class="chip-dot"></span>
-            Who are the top 10 sales representatives?
+            Show revenue by industry.
           </button>
           <button class="chip">
             <span class="chip-dot"></span>
@@ -130,11 +127,11 @@
           </button>
           <button class="chip">
             <span class="chip-dot"></span>
-            Show opportunities above $100K.
+            Show revenue by lead source.
           </button>
           <button class="chip">
             <span class="chip-dot"></span>
-            Show lead conversion rate by source.
+            Show monthly revenue for 2026 as a line chart.
           </button>
         </div>
       </div>
@@ -226,6 +223,12 @@
           <h2 id="result-title">Interactive Analysis Results</h2>
         </div>
         <div class="results-actions">
+          <div class="chart-type-picker" role="group" aria-label="Choose chart type">
+            <button type="button" class="chart-type-button" data-chart-type="bar" aria-pressed="false">Bar</button>
+            <button type="button" class="chart-type-button" data-chart-type="line" aria-pressed="false">Line</button>
+            <button type="button" class="chart-type-button" data-chart-type="pie" aria-pressed="false">Pie</button>
+            <button type="button" class="chart-type-button" data-chart-type="donut" aria-pressed="false">Donut</button>
+          </div>
           <button id="export-csv" class="secondary" disabled>
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -237,10 +240,19 @@
         </div>
       </div>
 
+      <div class="answer-summary" aria-live="polite">
+        <div class="answer-mark" aria-hidden="true">AI</div>
+        <div>
+          <span class="answer-label">ANALYTICS RESPONSE</span>
+          <p id="analysis-summary">Run an analysis to see a verified answer and interactive chart.</p>
+          <ul id="analysis-insights" hidden></ul>
+        </div>
+      </div>
+
       <!-- Quick KPI summary cards injected dynamically -->
       <div id="kpi-banner" class="kpi-banner" hidden>
         <div class="kpi-item">
-          <span class="kpi-label">Records Returned</span>
+          <span class="kpi-label">Groups Returned</span>
           <span class="kpi-val" id="kpi-count">0</span>
         </div>
         <div class="kpi-item">
@@ -248,8 +260,8 @@
           <span class="kpi-val" id="kpi-sum">—</span>
         </div>
         <div class="kpi-item">
-          <span class="kpi-label">Data Confidence</span>
-          <span class="kpi-val highlight" id="kpi-confidence">100% Deterministic</span>
+          <span class="kpi-label">Reconciliation Check</span>
+          <span class="kpi-val highlight" id="kpi-confidence">Group totals match</span>
         </div>
       </div>
 
