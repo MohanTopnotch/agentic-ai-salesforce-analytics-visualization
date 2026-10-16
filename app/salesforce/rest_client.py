@@ -213,8 +213,27 @@ class SalesforceRESTClient(SalesforceClient):
             raise
 
     def _open_json(self, request: Request) -> dict[str, Any]:
+        """Open an allowlisted HTTPS Salesforce URL and parse its JSON response."""
+        parsed_url = urlparse(request.full_url)
+        allowed_hosts = {urlparse(self.login_url).hostname}
+        if self._instance_url:
+            allowed_hosts.add(urlparse(self._instance_url).hostname)
+
+        if (
+            parsed_url.scheme != "https"
+            or not parsed_url.hostname
+            or parsed_url.hostname not in allowed_hosts
+            or parsed_url.username is not None
+            or parsed_url.password is not None
+        ):
+            raise SalesforceAPIError(
+                "Salesforce request URL is not permitted.",
+                code="INVALID_REQUEST_URL",
+            )
+
         try:
-            with urlopen(request, timeout=self.timeout) as response:
+            # B310 is suppressed only after explicit HTTPS and host allowlisting.
+            with urlopen(request, timeout=self.timeout) as response:  # nosec B310
                 payload = json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
             error_code = "SALESFORCE_HTTP_ERROR"
