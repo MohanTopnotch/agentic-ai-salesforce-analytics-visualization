@@ -80,7 +80,18 @@ def test_injected_salesforce_client_is_used_for_metadata_and_queries():
     assert response.data["intent"]["group_by"] == ["Industry"]
     assert (
         response.data["visualization"]["layout"]["title"]["text"]
-        == "Lead Annual Revenue by Industry"
+        == "Annual Revenue by Industry"
     )
     assert client.metadata_reads == 1
     assert client.query_reads == 1
+
+
+def test_orchestrator_respects_requested_donut_chart():
+    response = AnalyticsOrchestrator().run(
+        "Show revenue by industry as a circular chart"
+    )
+
+    assert response.status == "success"
+    assert response.data["visualization"]["chart_type"] == "donut"
+    assert response.data["visualization"]["data"][0]["type"] == "pie"
+    assert response.data["visualization"]["data"][0]["hole"] == 0.5

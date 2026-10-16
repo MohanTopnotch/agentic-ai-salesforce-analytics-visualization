@@ -72,6 +72,16 @@ class MockSalesforceClient(SalesforceClient):
                 "CreatedDate": _field("CreatedDate", "datetime"),
                 "EmailBouncedDate": _field("EmailBouncedDate", "datetime"),
             }
+        },
+        "Opportunity": {
+            "fields": {
+                "Id": _field("Id", "id"),
+                "Name": _field("Name", "string"),
+                "Amount": _field("Amount", "currency", aggregatable=True),
+                "StageName": _field("StageName", "string"),
+                "CloseDate": _field("CloseDate", "date"),
+                "Region": _field("Region", "string"),
+            }
         }
     }
 
@@ -161,6 +171,32 @@ class MockSalesforceClient(SalesforceClient):
             ]
         }
 
+        sample_records["Opportunity"] = [
+            {
+                "Id": "OPP001",
+                "Name": "North Region Renewal",
+                "Amount": 150_000,
+                "StageName": "Closed Won",
+                "CloseDate": "2026-02-15",
+                "Region": "North",
+            },
+            {
+                "Id": "OPP002",
+                "Name": "West Region Expansion",
+                "Amount": 250_000,
+                "StageName": "Negotiation",
+                "CloseDate": "2026-03-20",
+                "Region": "West",
+            },
+            {
+                "Id": "OPP003",
+                "Name": "South Region Upgrade",
+                "Amount": 100_000,
+                "StageName": "Closed Won",
+                "CloseDate": "2026-03-25",
+                "Region": "South",
+            },
+        ]
         self._records = deepcopy(sample_records if records is None else records)
 
     def describe_object(self, object_name: str) -> dict[str, Any]:

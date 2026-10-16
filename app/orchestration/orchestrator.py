@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
+from app.agents.visualization import VisualizationAgent
 from app.analysis.calculation import safe_sum
 from app.analysis.verification import verify_reconciliation
 from app.mock_salesforce_client import MockSalesforceClient
@@ -160,6 +161,10 @@ class AnalyticsOrchestrator:
             question = context.user_request
             normalized = question.lower().strip()
             prior_intent = context.metadata.get("prior_intent")
+            has_sales_metric = any(
+                word in normalized
+                for word in ("sales", "revenue", "amount", "pipeline")
+            )
 
             follow_up_phrases = (
                 "show only",
@@ -187,6 +192,37 @@ class AnalyticsOrchestrator:
 
             if is_follow_up and isinstance(prior_intent, dict):
                 intent = deepcopy(prior_intent)
+                metrics = intent.get("metrics", [])
+                dimensions = intent.get("group_by", [])
+                object_name = intent.get("object_name")
+                if (
+                    not isinstance(metrics, list)
+                    or not metrics
+                    or not isinstance(dimensions, list)
+                    or not dimensions
+                    or object_name not in {"Lead", "Opportunity"}
+                ):
+                    return SimpleNamespace(
+                        status="needs_clarification",
+                        output={
+                            "clarification_question": (
+                                "I can’t safely refine that previous result. "
+                                "Please ask for revenue by industry or source, "
+                                "sales by region, pipeline by stage, or monthly revenue."
+                            )
+                        },
+                        error=None,
+                    )
+
+                dimension = dimensions[0]
+                metric = metrics[0]
+                context.metadata["analysis"] = {
+                    "object_name": object_name,
+                    "metric": metric,
+                    "dimension": dimension,
+                    "time_bucket": "month" if dimension == "CloseDate" else None,
+                    "year": None,
+                }
                 intent["original_question"] = question
                 intent["is_follow_up"] = True
 
@@ -210,13 +246,74 @@ class AnalyticsOrchestrator:
                     error=None,
                 )
 
+            year_match = search(r"\b(20\d{2})\b", normalized)
+            year = int(year_match.group(1)) if year_match else None
+            if has_sales_metric and "region" in normalized:
+                object_name, metric, dimension = "Opportunity", "Amount", "Region"
+                filters = (
+                    []
+                    if "pipeline" in normalized
+                    else [("StageName", "=", "Closed Won")]
+                )
+            elif (
+                has_sales_metric
+                and ("month" in normalized or "monthly" in normalized)
+            ):
+                object_name, metric, dimension = "Opportunity", "Amount", "CloseDate"
+                filters = [("StageName", "=", "Closed Won")]
+            elif has_sales_metric and (
+                "pipeline" in normalized
+                or (
+                    "stage" in normalized
+                    and any(
+                        term in normalized
+                        for term in ("opportunity", "opportunities", "sales")
+                    )
+                )
+            ):
+                object_name, metric, dimension = "Opportunity", "Amount", "StageName"
+                filters = []
+            elif has_sales_metric and (
+                "industry" in normalized or "industries" in normalized
+            ):
+                object_name, metric, dimension = "Lead", "AnnualRevenue", "Industry"
+                filters = []
+            elif has_sales_metric and (
+                "lead source" in normalized or "by source" in normalized
+            ):
+                object_name, metric, dimension = "Lead", "AnnualRevenue", "LeadSource"
+                filters = []
+            else:
+                return SimpleNamespace(
+                    status="needs_clarification",
+                    output={
+                        "clarification_question": (
+                            "I can’t safely answer that from the available verified "
+                            "analytics. Try revenue by industry or lead source, sales "
+                            "by region, opportunity pipeline by stage, or monthly "
+                            "revenue. Unsupported or ambiguous requests won’t run a query."
+                        )
+                    },
+                    error=None,
+                )
+
+            context.metadata["analysis"] = {
+                "object_name": object_name,
+                "metric": metric,
+                "dimension": dimension,
+                "time_bucket": "month" if dimension == "CloseDate" else None,
+                "year": year if dimension == "CloseDate" else None,
+                "filters": filters,
+            }
             intent = {
                 "intent": "sales_analysis",
                 "original_question": question,
                 "entities": [],
-                "metrics": ["AnnualRevenue"],
-                "group_by": ["Industry"],
-                "filters": [],
+                "object_name": object_name,
+                "metrics": [metric],
+                "group_by": [dimension],
+                "year": context.metadata["analysis"]["year"],
+                "filters": filters,
                 "sort": None,
                 "limit": limit,
                 "is_follow_up": False,
@@ -233,7 +330,15 @@ class AnalyticsOrchestrator:
                 accessible_objects = client.get_accessible_objects(
                     user_id=context.user_id,
                 )
-                described_objects = ["Lead"] if "Lead" in accessible_objects else []
+                requested_object = context.metadata.get("analysis", {}).get(
+                    "object_name",
+                    "Lead",
+                )
+                described_objects = (
+                    [requested_object]
+                    if requested_object in accessible_objects
+                    else []
+                )
                 metadata = {
                     "accessible_objects": accessible_objects,
                     "object_metadata": {
@@ -253,18 +358,42 @@ class AnalyticsOrchestrator:
             )
 
         def query_planning(context: RequestContext) -> SimpleNamespace:
-            # Keep the current fixed plan narrow until dynamic planning is wired.
-            soql = "SELECT AnnualRevenue, Industry FROM Lead LIMIT 10"
+            analysis = context.metadata.get("analysis", {})
+            object_name = analysis.get("object_name", "Lead")
+            metric = analysis.get("metric", "AnnualRevenue")
+            dimension = analysis.get("dimension", "Industry")
+            limit = context.intent.get("limit") or 100
+            fields = [metric, dimension]
+            year = analysis.get("year")
+            where_clauses = [
+                f"{field} {operator} '{value}'"
+                for field, operator, value in analysis.get("filters", [])
+            ]
+            if dimension == "CloseDate" and year:
+                where_clauses.extend(
+                    [
+                        f"CloseDate >= '{year}-01-01'",
+                        f"CloseDate <= '{year}-12-31'",
+                    ]
+                )
+            where_clause = (
+                f" WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+            )
+            soql = (
+                f"SELECT {', '.join(dict.fromkeys(fields))} "
+                f"FROM {object_name}{where_clause} LIMIT {limit}"
+            )
             context.soql_query = soql
             return SimpleNamespace(
                 status="success",
                 output={
                     "query_plan": {
                         "soql_query": soql,
-                        "object_name": "Lead",
-                        "fields": ["AnnualRevenue", "Industry"],
-                        "filters": [],
-                        "limit": 10,
+                        "object_name": object_name,
+                        "fields": fields,
+                        "filters": analysis.get("filters", []),
+                        "year": year,
+                        "limit": limit,
                     }
                 },
                 error=None,
@@ -373,8 +502,12 @@ class AnalyticsOrchestrator:
 
         def data_analysis(context: RequestContext) -> SimpleNamespace:
             rows = context.query_results or []
-            metric = "AnnualRevenue"
-            dimension = "Industry"
+            analysis = context.metadata.get("analysis", {})
+            metric = analysis.get("metric", "AnnualRevenue")
+            dimension = analysis.get("dimension", "Industry")
+            output_dimension = (
+                "Month" if analysis.get("time_bucket") == "month" else dimension
+            )
 
             if not rows:
                 context.calculated_data = []
@@ -413,13 +546,16 @@ class AnalyticsOrchestrator:
                         raise ValueError(f"Non-finite metric value for '{metric}'.")
 
                     raw_values.append(value)
-                    group = str(row.get(dimension) or "Unknown")
+                    group_value = row.get(dimension)
+                    if analysis.get("time_bucket") == "month" and group_value:
+                        group_value = f"{str(group_value)[:7]}-01"
+                    group = str(group_value or "Unknown")
                     grouped.setdefault(group, []).append(value)
 
                 grand_total = safe_sum(raw_values)
                 calculated = [
                     {
-                        dimension: group,
+                        output_dimension: group,
                         metric: safe_sum(values),
                     }
                     for group, values in sorted(grouped.items())
@@ -474,6 +610,10 @@ class AnalyticsOrchestrator:
         def verification(context: RequestContext) -> SimpleNamespace:
             rows = context.query_results or []
             calculated = context.calculated_data or []
+            metric = context.metadata.get("analysis", {}).get(
+                "metric",
+                "AnnualRevenue",
+            )
 
             try:
                 if not rows or not calculated:
@@ -481,11 +621,11 @@ class AnalyticsOrchestrator:
 
                 raw_values: list[Decimal] = []
                 for row in rows:
-                    if "AnnualRevenue" not in row:
+                    if metric not in row:
                         raise ValueError(
-                            "Required raw metric field 'AnnualRevenue' is missing."
+                            f"Required raw metric field '{metric}' is missing."
                         )
-                    value = row["AnnualRevenue"]
+                    value = row[metric]
                     if value is None or isinstance(value, bool):
                         raise ValueError("Invalid raw metric value.")
                     number = Decimal(str(value))
@@ -495,11 +635,11 @@ class AnalyticsOrchestrator:
 
                 group_totals: list[Decimal] = []
                 for row in calculated:
-                    if "AnnualRevenue" not in row:
+                    if metric not in row:
                         raise ValueError(
-                            "Required grouped metric field 'AnnualRevenue' is missing."
+                            f"Required grouped metric field '{metric}' is missing."
                         )
-                    value = row["AnnualRevenue"]
+                    value = row[metric]
                     if value is None or isinstance(value, bool):
                         raise ValueError("Invalid grouped metric value.")
                     number = Decimal(str(value))
@@ -545,38 +685,39 @@ class AnalyticsOrchestrator:
             )
 
         def visualization(context: RequestContext) -> SimpleNamespace:
-            rows = context.calculated_data or []
-            spec = {
-                "chart_type": "bar",
-                "data": [
-                    {
-                        "type": "bar",
-                        "x": [str(row.get("Industry", "Unknown")) for row in rows],
-                        "y": [float(row.get("AnnualRevenue", 0) or 0) for row in rows],
-                    }
-                ],
-                "layout": {
-                    "title": {"text": "Lead Annual Revenue by Industry"},
-                    "autosize": True,
-                },
-                "config": {
-                    "responsive": True,
-                    "displaylogo": False,
-                },
-            }
+            result = VisualizationAgent().run(context)
             return SimpleNamespace(
-                status="success",
-                output={"visualization": spec},
-                error=None,
+                status=result.status,
+                output=result.output,
+                error=result.error,
             )
 
         def insight_generation(context: RequestContext) -> SimpleNamespace:
             rows = context.calculated_data or []
+            analysis = context.metadata.get("analysis", {})
+            dimension = (
+                "Month"
+                if analysis.get("time_bucket") == "month"
+                else analysis.get("dimension", "Industry")
+            )
+            metric = analysis.get("metric", "AnnualRevenue")
+            dimension_label = {
+                "CloseDate": "month",
+                "Industry": "industry",
+                "LeadSource": "lead source",
+                "Region": "region",
+                "StageName": "stage",
+            }.get(dimension, dimension)
+            metric_label = (
+                "revenue" if "revenue" in metric.lower()
+                else "sales amount" if metric == "Amount"
+                else metric
+            )
             insights = [
                 (
-                    f"Lead records in {row.get('Industry', 'Unknown')} list "
-                    "combined AnnualRevenue of "
-                    f"${float(row.get('AnnualRevenue', 0) or 0):,.2f}."
+                    f"{dimension_label.title()} {row.get(dimension, 'Unknown')} "
+                    f"has {metric_label} of "
+                    f"${float(row.get(metric, 0) or 0):,.2f}."
                 )
                 for row in rows
             ] or ["No revenue records were available for analysis."]
